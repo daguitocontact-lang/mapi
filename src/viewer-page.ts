@@ -110,6 +110,7 @@ body.lib-closed{--libw:12px}body.steps-closed{--panelw:12px}body.steps-closed #s
 #libhide{position:absolute;right:0;top:0}#libshow{display:none}body.lib-closed #libshow{display:flex}
 @media (max-width:1440px){#toolbar{gap:2px;padding:5px}#toolbar button{padding:6px 9px;font-size:12.5px}}
 #where{position:fixed;left:calc(var(--libw) + 30px);bottom:20px;z-index:2;font:500 12px ui-monospace,Menlo,monospace;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:100px;padding:5px 12px;pointer-events:none}
+.brandlogo{display:block;margin-bottom:8px}
 #viewport{position:absolute;inset:0;width:100%;height:100%;display:block}
 </style></head><body>
 <div id="stage"><svg id="viewport" xmlns="http://www.w3.org/2000/svg"><g id="world"></g></svg></div>
@@ -126,7 +127,7 @@ body.lib-closed{--libw:12px}body.steps-closed{--panelw:12px}body.steps-closed #s
 <button id="copy4claude" class="primary">Copy for AI</button>
 </div>
 <div id="panel"></div>
-<aside id="library"><div class="libhead"><b>Mapi</b><span>Maps</span><button id="libhide" title="Hide maps"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg></button></div><input id="libsearch" placeholder="Search maps…" autocomplete="off"><nav id="libtree"></nav><div id="libfoot"></div></aside>
+<aside id="library"><div class="libhead"><svg class="brandlogo" width="22" height="22" viewBox="0 0 256 256" aria-label="Daguito"><circle cx="128" cy="128" r="120" fill="#0a0a0a" stroke="#ffffff" stroke-width="8"/><path d="M80 68 V188 H116 A60 60 0 0 0 116 68 Z" fill="#ffffff"/></svg><b>Mapi</b><span>Maps · by Daguito</span><button id="libhide" title="Hide maps"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg></button></div><input id="libsearch" placeholder="Search maps…" autocomplete="off"><nav id="libtree"></nav><div id="libfoot"></div></aside>
 <div id="versionBanner"></div>
 <aside id="steps"></aside><button id="stepsshow" title="Show steps">Steps</button>
 <div id="toast" role="status"></div>

@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./assets/logo-dark.svg" alt="Daguito" width="140">
+</p>
+
 <h1 align="center">Mapi</h1>
 
 <p align="center">
