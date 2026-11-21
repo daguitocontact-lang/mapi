@@ -55,6 +55,50 @@ about api Takes the payment, charges it and saves the order.
 More in [`examples/`](./examples) — a payments demo and a copy of a public cloud reference
 architecture drawn with exact placement and cloud icons.
 
+## MCP server
+
+Give any AI assistant Mapi as tools: it can read your maps, see where everything landed
+(the placement text), fix the layout and write maps back — validated, never drawn on top of
+anything.
+
+```bash
+# Claude Code — maps in the current folder
+claude mcp add mapi -- npx -y @daguito/mapi mcp .
+```
+
+<details>
+<summary>Claude Desktop · Cursor · VS Code · any MCP client</summary>
+
+```json
+{
+  "mcpServers": {
+    "mapi": {
+      "command": "npx",
+      "args": ["-y", "@daguito/mapi", "mcp", "/absolute/path/to/your/maps"]
+    }
+  }
+}
+```
+
+- **Claude Desktop**: `claude_desktop_config.json`
+- **Cursor**: `.cursor/mcp.json` (project) or `~/.cursor/mcp.json`
+- **VS Code**: `.vscode/mcp.json` — use the key `"servers"` instead of `"mcpServers"`
+
+Until the package is on npm, run it from GitHub: `npx -y github:daguitocontact-lang/mapi mcp .`
+</details>
+
+| Tool | What it does |
+|---|---|
+| `get_language_reference` | The Mapi syntax — read it before writing a map. |
+| `list_maps` | Every `.mapi` in the folder: path, title, kind. |
+| `read_map` | The source text of a map. |
+| `write_map` | Create or overwrite a map; validated first (not saved if it has errors unless `force`). Returns the placement text. |
+| `validate_map` | Errors (syntax, unknown boxes, anything drawn on top of anything), warnings, crossings. |
+| `get_placement` | **See the map as text**: ruler cell of every box, the route of every line (`G1↓G4←F4`), lengths, bends, crossings. |
+| `render_map` | The SVG (or write it to a file) — `clean`/`sketch`, `light`/`dark`. |
+
+Resource: `mapi://language` (the same reference). Inspect it locally with `pnpm inspector`.
+
 ## Stack
 
 - **Language & engine**: TypeScript, own grid placer + orthogonal router, ELK for flows
@@ -75,7 +119,9 @@ src/
   describe.ts     the placement text for AI
   dev-server.ts   viewer server (live reload, history, move)
   viewer-page.ts  the viewer UI
-  cli.ts          `mapi dev <folder>`
+  render-map.ts   the one pipeline: text → layout → SVG + placement
+  mcp/            MCP server: server.ts, stdio.ts, tools/ (one file per tool)
+  cli.ts          `mapi dev <folder>` · `mapi mcp <folder>`
   __tests__/      maps + language rules
 examples/         generic sample maps
 ```

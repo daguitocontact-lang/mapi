@@ -1,30 +1,57 @@
 {
   "name": "@daguito/mapi",
-  "version": "0.0.1",
-  "private": true,
+  "version": "0.1.0",
   "description": "Mapi — one text language to map business, infra and code, drawn by AI.",
   "license": "MIT",
   "author": "Daguito, LLC",
+  "mcpName": "io.github.daguitocontact-lang/mapi",
+  "homepage": "https://github.com/daguitocontact-lang/mapi#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daguitocontact-lang/mapi.git"
+  },
+  "keywords": [
+    "mcp",
+    "modelcontextprotocol",
+    "diagrams",
+    "architecture",
+    "text-to-diagram",
+    "ai"
+  ],
   "type": "module",
   "bin": {
     "mapi": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
   },
   "scripts": {
     "dev": "bun --watch src/cli.ts dev examples",
     "build": "tsup",
     "typecheck": "tsc --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "prepare": "tsup",
+    "inspector": "npx @modelcontextprotocol/inspector node dist/cli.js mcp examples"
   },
   "dependencies": {
     "@iconify-json/logos": "1.2.4",
     "@iconify-json/lucide": "1.2.151",
+    "@modelcontextprotocol/server": "2.4.0",
     "elkjs": "0.10.0",
-    "roughjs": "4.6.6"
+    "roughjs": "4.6.6",
+    "zod": "4.6.7"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
     "@types/bun": "1.3.12",
     "@types/node": "^22.10.0",
     "tsup": "^8.3.5",
     "typescript": "^5.7.0"
-  }
+  },
+  "packageManager": "pnpm@11.5.2"
 }

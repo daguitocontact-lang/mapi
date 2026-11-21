@@ -2,16 +2,15 @@ import { createServer } from 'node:http'
 import type { ServerResponse } from 'node:http'
 import { existsSync, readFileSync, watch, writeFileSync } from 'node:fs'
 import { dirname, join, resolve, sep } from 'node:path'
-import { parseMapi } from './parse'
-import { layoutMap } from './layout'
 import { viewDocument } from './focus'
+import { layoutMap } from './layout'
+import { parseMapi } from './parse'
+import { renderMap } from './render-map'
 import type { MapNode, ParseError } from './model'
 import { compareSteps } from './model'
-import { renderSvg } from './render/svg'
 import type { RenderStyle, RenderTheme } from './render/theme'
 import { RENDER_STYLES, RENDER_THEMES, paletteFor } from './render/theme'
 import { viewerPage } from './viewer-page'
-import { describePlacement } from './describe'
 import { listLibrary, resolveMapPath } from './library'
 import { listVersions, readVersion, recordVersion, restoreVersion } from './history'
 
@@ -122,23 +121,15 @@ function checkCodeAnchors(nodes: MapNode[], repoRoot: string): ParseError[] {
 }
 
 async function renderFile({ path, source, style, theme, focus, context, showIds }: RenderRequest) {
-  const parsed = parseMapi(source)
-  const { doc } = parsed
-  const repoRoot = findRepoRoot(dirname(path))
-  const errors = [...parsed.errors, ...checkCodeAnchors(doc.nodes, repoRoot)]
-  const view = viewDocument(doc, { focusId: focus, context })
-  const placed = await layoutMap(view.doc, { drillable: view.drillable, style, showIds })
-  const palette = paletteFor(style, theme)
   // The viewer paints the (infinite) background itself, so the SVG ships without one.
-  const svg = renderSvg(placed, { style, theme, background: false, showIds })
+  const { doc, view, placed, svg, placement, errors, warnings } = await renderMap(source, { style, theme, focus, context, showIds, background: false })
+  const repoRoot = findRepoRoot(dirname(path))
+  const palette = paletteFor(style, theme)
   return {
     svg,
-    errors: [
-      ...errors,
-      ...placed.overlaps.map((o) => ({ line: 0, message: `overlap ${o.kind}: ${o.a} × ${o.b}` })),
-    ],
+    errors: [...errors, ...warnings, ...checkCodeAnchors(doc.nodes, repoRoot)],
     crossings: placed.crossings,
-    placement: describePlacement(placed),
+    placement,
     trail: view.trail,
     summary: doc.summary,
     kind: doc.kind,
