@@ -1,0 +1,30 @@
+{
+  "name": "@daguito/mapi",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Mapi — one text language to map business, infra and code, drawn by AI.",
+  "license": "MIT",
+  "author": "Daguito, LLC",
+  "type": "module",
+  "bin": {
+    "mapi": "./dist/cli.js"
+  },
+  "scripts": {
+    "dev": "bun --watch src/cli.ts dev examples",
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@iconify-json/logos": "1.2.4",
+    "@iconify-json/lucide": "1.2.151",
+    "elkjs": "0.10.0",
+    "roughjs": "4.6.6"
+  },
+  "devDependencies": {
+    "@types/bun": "1.3.12",
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.0"
+  }
+}

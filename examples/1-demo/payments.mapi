@@ -1,0 +1,15 @@
+kind architecture
+title Payments
+summary The customer pays in the store; the API charges the card with Stripe and saves the order.
+about api Takes the payment, charges it and saves the order.
+about db Where orders are kept.
+about stripe Charges the customer's card.
+
+customer: Customer [actor, top, col=1]
+api: Payments API [icon=aws-ecs, col=1]
+db: Database [store, clone]
+stripe: Stripe [external, clone, icon=stripe]
+
+customer -> api: pays
+api -> stripe: charges
+api -> db: saves the order

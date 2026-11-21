@@ -1,0 +1,69 @@
+# Reference copy: the "Kelvin on AWS" reference diagram copied as is — every piece placed where it
+# is in the original ([at=x/y] in cell units, 1 cell ≈ 133 px of the source image) and drawn
+# in cloud-diagram style ([icon] = big logo over its name, no box).
+kind architecture
+title Kelvin on AWS
+summary Kelvin brings industrial plant data to AWS: an edge node gathers it and sends it to an EKS cluster in Kelvin's account, which stores it in RDS, notifies through SNS and feeds Kelvin's apps and the customer's integrations.
+about node Runs in the plant and gathers machine data.
+about bridges Connect the node to each industrial data source.
+about store The plant's database.
+about plc Industrial gateway / PLC of the machines.
+about alb Entry point to the cluster in AWS.
+about eks Kelvin's cluster: processes the data and runs the apps.
+about rds Kelvin's database.
+about sns Notifications and events.
+about manager Console to manage nodes and apps.
+about sdk For developers building on Kelvin.
+about maps Maps and copilots for operators.
+about ec2 Kelvin nodes running in the customer's account.
+about users The people who use Kelvin.
+
+plant: Industrial\nplant/factory [color=gray, icon=lucide:factory, at=0.04/0.04:2.03/5.86] {
+  edge: Edge Gateway [color=gray, dashed, at=0.11/0.75:1.95/3.27] {
+    node: Kelvin Node [badge=2, icon, icon=lucide:cpu, at=1.13/1.62]
+    bridges: Kelvin Bridges [icon, icon=lucide:layout-grid, at=1.13/2.74]
+  }
+  store: industrial data\nstore [badge=1, icon, icon=lucide:database, at=0.6/4.9]
+  plc: industrial\ngateway/PLC [icon, icon=lucide:cpu, at=1.5/4.9]
+}
+
+aws: AWS Cloud [color=gray, icon=aws, at=2.29/0.04:9.17/5.86] {
+  kelvin: Kelvin account [color=pink, icon=lucide:shapes, at=2.48/0.68:9.02/3.8] {
+    vpc: Virtual private cloud (VPC) [color=purple, icon=aws-vpc, at=2.63/1.17:6.88/3.68] {
+      rds: Amazon RDS [badge=9, icon, icon=aws-rds, at=4.32/2.03]
+      sns: Amazon SNS [icon, icon=aws-sns, at=5.9/2.03]
+      alb: Application Load\nBalancer [icon, icon=aws-elb, at=3.23/3.08]
+      eks: Amazon EKS\nKelvin cluster [badge=5, icon, icon=aws-eks, at=5.06/3.08]
+    }
+    apps: Kelvin applications [color=gray, badge=4, at=7.05/1.05:8.97/3.77] {
+      manager: Kelvin Manager [icon, icon=lucide:layout-grid, at=7.63/1.95]
+      sdk: Kelvin SDK [icon, icon=lucide:box, at=8.46/1.95]
+      maps: Kelvin\nMaps/Copilots [badge=7, icon, icon=lucide:monitor-smartphone, at=7.95/3.08]
+    }
+  }
+  customer: Customer account [color=pink, icon=lucide:shapes, at=2.48/3.95:9.02/5.75] {
+    ec2box: Amazon EC2\nKelvin Nodes [color=orange, icon=aws-ec2, at=3.2/4.25:5.53/5.64] {
+      ec2: Amazon EC2 instances [badge=6, icon, icon=aws-ec2, at=4.32/5.1]
+    }
+    integrations: Integrations [color=gray, badge=8, dashed, at=5.79/4.23:8.8/5.62] {
+      s3: Amazon\nS3 [icon, icon=aws-s3, at=6.19/5.05]
+      sitewise: AWS IoT\nSiteWise [icon, icon=lucide:activity, at=6.94/5.05]
+      quicksight: Amazon\nQuicksight [icon, icon=aws-quicksight, at=7.65/5.05]
+      sagemaker: Amazon\nSageMaker [icon, icon=lucide:brain-circuit, at=8.41/5.05]
+    }
+  }
+}
+
+users: Kelvin users [icon, icon=lucide:users, at=9.62/1.5]
+
+plant.store -> plant.edge.bridges
+plant.plc -> plant.edge.bridges
+plant.edge.node <-> plant.edge.bridges
+plant.edge.node <-> aws.kelvin.vpc.alb
+aws.customer.ec2box.ec2 -> aws.kelvin.vpc.alb
+aws.kelvin.vpc.alb <-> aws.kelvin.vpc.eks
+aws.kelvin.vpc.eks <-> aws.kelvin.vpc.rds
+aws.kelvin.vpc.eks <-> aws.kelvin.vpc.sns
+aws.kelvin.vpc.eks -> aws.kelvin.apps: 3
+aws.kelvin.apps -> users
+aws.kelvin.vpc.eks <-> aws.customer.integrations

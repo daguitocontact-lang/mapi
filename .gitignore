@@ -1,0 +1,4 @@
+node_modules/
+dist/
+# Per-machine version history written by the dev server; restore happens locally.
+examples/.mapi-history/
