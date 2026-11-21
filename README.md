@@ -143,7 +143,7 @@ examples/         generic sample maps
 |---|---|
 | `actor` `store` `external` `decision` `icon` | Shape: person, data, third party, diamond, big logo over its name. |
 | `dashed` `text` | Optional/failure box; a note (explains the box next to it). |
-| `icon=aws-lambda` / `icon=lucide:users` | Logo (Iconify `logos`) or line glyph (`lucide:` prefix). On a group: left of its title. |
+| `icon=aws-lambda` / `icon=lucide:users` | Logo (Iconify `logos`, plus the built-in `daguito`) or line glyph (`lucide:` prefix). On a group: left of its title. |
 | `col=2` / `col=1.85` | Column (architecture). Fractions sit between columns; the number counts. |
 | `row=services` | Every box with the same row name sits at the same height. |
 | `top` / `bottom` | Pin to the first row (entries — nothing else shares it) or the last (asides). |

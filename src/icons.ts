@@ -19,7 +19,17 @@ const SETS: Record<string, IconSet> = {
 
 export type Icon = { body: string; width: number; height: number }
 
+// Mapi's own marks, checked before the Iconify sets.
+const BUILT_IN: Record<string, Icon> = {
+  daguito: {
+    body: '<circle cx="128" cy="128" r="124" fill="#0a0a0a"/><path d="M80 68V188H116A60 60 0 0 0 116 68Z" fill="#fff"/>',
+    width: 256,
+    height: 256,
+  },
+}
+
 export function getIcon(name: string): Icon | null {
+  if (BUILT_IN[name]) return BUILT_IN[name]
   const [prefix, key] = name.includes(':') ? (name.split(':', 2) as [string, string]) : ['logos', name]
   const set = SETS[prefix]
   if (!set) return null
