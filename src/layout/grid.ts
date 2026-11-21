@@ -369,6 +369,7 @@ function placeBoxes(doc: MapDocument, sized: PlacedNode[], edges: MapEdge[], spr
       return kids.length > 0 ? Math.min(...kids.map((k) => k.y)) - byId.get(g)!.y : 0
     }),
   )
+  const rowPinned = (id: string) => doc.nodes.some((n) => n.id === id && n.row)
   /** Stack every box top-down (columns pack independently); `minTop` lifts a floor per box. */
   const stackRows = (minTop: Map<string, number>) => {
     let belowTopRow: number | null = null
@@ -393,8 +394,13 @@ function placeBoxes(doc: MapDocument, sized: PlacedNode[], edges: MapEdge[], spr
       // A box hanging from a feeder in its own column sits below it; other feeders may then
       // sit beside it (their line comes in from the side), never above their top. A box with no
       // feeder in its own column sits below all of them — the flow keeps reading downward.
-      const sameColumn = (from: string) => Math.abs((slots.get(from)?.col ?? Infinity) - sl.col) <= 0.5
-      const fedBy = edges.filter((e) => e.to === id && !returns.has(e) && bottom.has(blockOfId(e.from)))
+      const sameColumn = (from: string) => Math.abs((slots.get(from)?.col ?? Infinity) - sl.col) < 0.5
+      // A line between two boxes the author put on rows comes in from the side: rows, not the
+      // line, decide their heights (otherwise a two-way pair pushes each other down forever).
+      const sideOfRows = (from: string) => !sameColumn(from) && rowPinned(id) && rowPinned(from)
+      const fedBy = edges.filter(
+        (e) => e.to === id && !returns.has(e) && bottom.has(blockOfId(e.from)) && !sideOfRows(blockOfId(e.from)),
+      )
       const anchored = fedBy.some((e) => sameColumn(blockOfId(e.from)))
       const feeds = fedBy.map((e) => {
         const from = blockOfId(e.from)
@@ -432,7 +438,7 @@ function placeBoxes(doc: MapDocument, sized: PlacedNode[], edges: MapEdge[], spr
     if (row) sameGroups.set(`row:${row}`, [...(sameGroups.get(`row:${row}`) ?? []), id])
   }
   const align = new Map<string, number>()
-  for (let pass = 0; pass < 3; pass++) {
+  for (let pass = 0; pass < 12; pass++) {
     let changed = false
     for (const ids of sameGroups.values()) {
       if (ids.length < 2) continue
