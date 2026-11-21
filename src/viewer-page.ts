@@ -755,7 +755,11 @@ function setSteps(open) {
 try { if (localStorage.getItem(STEPS_KEY) === '1') document.body.classList.add('steps-closed') } catch (err) { console.warn('[mapi] panel pref not read', err) }
 $('stepsshow').onclick = () => setSteps(true)
 $('libshow').onclick = () => setLibrary(true)
-fetch('/files').then((r) => r.json()).then((entries) => { library = entries; renderLibrary() })
+// The sidebar re-reads the folder on every change, so a new, renamed or deleted map shows up live.
+const loadLibrary = () =>
+  fetch('/files').then((r) => r.json()).then((entries) => { library = entries; renderLibrary() })
+    .catch((err) => console.warn('[mapi] library not loaded', err))
+loadLibrary()
 
 // History: every save is a version; view one read-only and restore it if needed.
 async function openHistory() {
@@ -830,7 +834,11 @@ const clock = () => new Date().toLocaleTimeString('en-US', { hour12: false })
 // ?nolive=1 skips the live channel (headless screenshots never go idle with it open).
 const events = q.get('nolive') ? { addEventListener() {} } : new EventSource('/events')
 events.onmessage = async (e) => {
+  const known = library.some((x) => x.path === e.data)
+  await loadLibrary()
   const changed = e.data, entry = library.find((x) => x.path === changed), name = entry ? entry.title : changed
+  if (!known && entry) { toast('New map: ' + name, { label: 'Open', run: () => navigate(changed, null) }); return }
+  if (!entry) return
   if (changed === q.get('file')) { await refresh(); toast('Updated · ' + name + ' · ' + clock()) }
   else toast('Another map changed: ' + name, { label: 'Open', run: () => navigate(changed, null) })
 }
