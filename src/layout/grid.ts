@@ -793,6 +793,64 @@ function simplify(pts: Point[]): Point[] {
 
 // ---------------------------------------------------------------- labels
 
+/**
+ * Two lines entering the same side of one box cross when the one that turns in closer to the
+ * box takes the far spot. Swapping their entry spots removes the crossing.
+ */
+function untangleEntries(
+  points: Map<number, Point[]>,
+  edges: MapEdge[],
+  leaves: Box[],
+  cost: (p: Map<number, Point[]>) => number,
+): Map<number, Point[]> {
+  const entry = (pts: Point[]) => {
+    if (pts.length < 3) return null
+    const [px, py] = pts[pts.length - 2]!
+    const [lx, ly] = pts[pts.length - 1]!
+    if (py === ly && px !== lx) return { axis: 1 as const, side: lx, at: ly }
+    if (px === lx && py !== ly) return { axis: 0 as const, side: ly, at: lx }
+    return null
+  }
+  const withEntry = (pts: Point[], axis: 0 | 1, at: number): Point[] => {
+    const out = pts.map((p) => [...p] as Point)
+    out[out.length - 1]![axis] = at
+    out[out.length - 2]![axis] = at
+    return out
+  }
+  const hitsBox = (pts: Point[], from: string, to: string) =>
+    segmentBoxes(pts.slice(-3)).some((sg) =>
+      leaves.some((b) => {
+        const id = (b as { id?: string }).id
+        if (id === from || id === to) return false
+        return sg.x < b.x + b.w && sg.x + sg.w > b.x && sg.y < b.y + b.h && sg.y + sg.h > b.y
+      }),
+    )
+  let best = points
+  let bestCost = cost(points)
+  for (let i = 0; i < edges.length; i++) {
+    for (let j = i + 1; j < edges.length; j++) {
+      if (edges[i]!.to !== edges[j]!.to) continue
+      const a = best.get(i)
+      const b = best.get(j)
+      const ea = a && entry(a)
+      const eb = b && entry(b)
+      if (!a || !b || !ea || !eb || ea.axis !== eb.axis || ea.side !== eb.side) continue
+      const na = withEntry(a, ea.axis, eb.at)
+      const nb = withEntry(b, eb.axis, ea.at)
+      if (hitsBox(na, edges[i]!.from, edges[i]!.to) || hitsBox(nb, edges[j]!.from, edges[j]!.to)) continue
+      const trial = new Map(best)
+      trial.set(i, na)
+      trial.set(j, nb)
+      const c = cost(trial)
+      if (c < bestCost) {
+        best = trial
+        bestCost = c
+      }
+    }
+  }
+  return best
+}
+
 function segmentBoxes(points: Point[]): Box[] {
   return points.slice(1).map((b, i) => {
     const a = points[i]!
@@ -898,6 +956,7 @@ export function gridLayout({ doc, edges, sized, spread, style }: GridInput) {
       points = trial
     }
   }
+  points = untangleEntries(points, edges, leaves, cost)
   const placedEdges: PlacedEdge[] = edges.map((e, i) => ({
     from: e.from,
     to: e.to,
