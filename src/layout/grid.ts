@@ -320,6 +320,21 @@ function spreadGroupOverTarget({ id, nodes, byId, edges, hi }: { id: string; nod
   group.w = Math.max(...kids.map((k) => k.x + k.w)) + GROUP_PAD - group.x
 }
 
+/**
+ * A frame's height comes from the pre-layout size, which can reserve rows its boxes no
+ * longer use once the grid lays them out. Trim the empty strip at the bottom (deepest
+ * frames first, so a parent sees its children's final size); boxes never move.
+ */
+function fitGroupsToChildren(nodes: PlacedNode[]): void {
+  const groups = nodes.filter((n) => n.isGroup).sort((a, b) => b.id.split('.').length - a.id.split('.').length)
+  for (const g of groups) {
+    const kids = nodes.filter((n) => n.id.startsWith(`${g.id}.`) && n.id.split('.').length === g.id.split('.').length + 1)
+    if (kids.length === 0) continue
+    const needed = Math.max(...kids.map((k) => k.y + k.h)) + GROUP_PAD - g.y
+    if (needed < g.h) g.h = needed
+  }
+}
+
 function placeBoxes(doc: MapDocument, sized: PlacedNode[], edges: MapEdge[], spread: number) {
   const nodes = sized.map((n) => ({ ...n }))
   orderGroupRows(doc, nodes)
@@ -487,13 +502,23 @@ function placeBoxes(doc: MapDocument, sized: PlacedNode[], edges: MapEdge[], spr
   closeFirstColumnGap({ slots, nodes, placedBlocks, gap: FRAME_GAP * spread, skip: (id) => aside(id) || pinnedTop(id), lanePad })
   straightenTopRow({ ids: [...slots.keys()].filter(pinnedTop), nodes, byId, edges, gap: COL_GAP * spread })
   // Asides form one tidy footnote row: left-aligned, evenly spaced, in the order written.
+  // An aside the author gave a column (`[bottom, col=…]`) sits centred under that column.
+  const columnCentre = (c: number) => {
+    const members = [...slots.entries()].filter(([id, sl]) => sl.col === c && !aside(id)).map(([id]) => byId.get(id)!)
+    if (members.length === 0) return null
+    return members.reduce((sum, m) => sum + m.x + m.w / 2, 0) / members.length
+  }
   let ax = PAD.left
   for (const id of [...slots.keys()].filter(aside)) {
     const n = byId.get(id)!
-    moveSubtree(nodes, id, ax - n.x, tops.get(id)! - n.y)
-    placedBlocks.push({ x: ax, w: n.w, top: tops.get(id)!, h: n.h })
-    ax += n.w + ASIDE_GAP
+    const wanted = doc.nodes.find((d) => d.id === id)?.col
+    const centre = wanted != null ? columnCentre(slots.get(id)!.col) : null
+    const x = centre !== null ? Math.max(ax, centre - n.w / 2) : ax
+    moveSubtree(nodes, id, x - n.x, tops.get(id)! - n.y)
+    placedBlocks.push({ x, w: n.w, top: tops.get(id)!, h: n.h })
+    ax = x + n.w + ASIDE_GAP
   }
+  fitGroupsToChildren(nodes)
   const lanePadMax = nodes.some((n) => n.lane) ? LANE_PAD : 0
   const shiftLeft = Math.min(...nodes.map((n) => n.x)) - lanePadMax - PAD.left
   if (shiftLeft > 0) for (const n of nodes) n.x -= shiftLeft
