@@ -93,9 +93,11 @@ function dividerOverlaps(placed: Placed): Overlap[] {
 
 function boxOverlaps(nodes: PlacedNode[]): Overlap[] {
   const out: Overlap[] = []
+  // A reference chip belongs wherever the box it is attached to lives (inside its frames).
+  const home = (n: PlacedNode) => n.attachedTo ?? n.id
   nodes.forEach((p, i) =>
     nodes.slice(i + 1).forEach((q) => {
-      if (isInside(p.id, q.id) || isInside(q.id, p.id) || !intersects(p, q)) return
+      if (isInside(home(p), q.id) || isInside(home(q), p.id) || !intersects(p, q)) return
       const groupHit = p.isGroup !== q.isGroup
       out.push({ kind: groupHit ? 'outside-group' : 'box-box', a: p.id, b: q.id })
     }),

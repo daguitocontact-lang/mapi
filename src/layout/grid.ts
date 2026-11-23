@@ -78,8 +78,11 @@ export function returnEdges(members: MapNode[], edges: MapEdge[]): Set<MapEdge> 
   return back
 }
 
-function ranksInBand(members: MapNode[], edges: MapEdge[]): Map<string, number> {
+function ranksInBand(members: MapNode[], rawEdges: MapEdge[]): Map<string, number> {
   const ids = new Set(members.map((m) => m.id))
+  // A line from a box inside a group (cf.app → balancer) ranks as a line from the group.
+  const lift = (id: string) => (ids.has(id) ? id : id.split('.')[0]!)
+  const edges = rawEdges.map((e) => ({ ...e, from: lift(e.from), to: lift(e.to) }))
   const back = returnEdges(members, edges)
   const inner = edges.filter((e) => ids.has(e.from) && ids.has(e.to) && e.from !== e.to && !back.has(e))
   const rank = new Map(members.map((m) => [m.id, 0]))
@@ -330,8 +333,33 @@ function fitGroupsToChildren(nodes: PlacedNode[]): void {
   for (const g of groups) {
     const kids = nodes.filter((n) => n.id.startsWith(`${g.id}.`) && n.id.split('.').length === g.id.split('.').length + 1)
     if (kids.length === 0) continue
-    const needed = Math.max(...kids.map((k) => k.y + k.h)) + GROUP_PAD - g.y
+    // Reference chips of a box inside the frame live inside it too.
+    const kidIds = new Set(kids.map((k) => k.id))
+    const held = [...kids, ...nodes.filter((n) => n.attachedTo !== null && kidIds.has(n.attachedTo))]
+    const needed = Math.max(...held.map((k) => k.y + k.h)) + GROUP_PAD - g.y
     if (needed < g.h) g.h = needed
+  }
+}
+
+/**
+ * Chips of a box INSIDE a group (aws.api → Stripe, Zoho…) ride beside that box like any
+ * other, and every frame around it widens to hold them; without this they stayed at the
+ * origin, top-left of the map.
+ */
+function placeNestedChips({ copies, slots, byId, nodes }: { copies: Map<string, PlacedNode[]>; slots: Map<string, Slot>; byId: Map<string, PlacedNode>; nodes: PlacedNode[] }): void {
+  for (const [owner, chips] of copies) {
+    const box = byId.get(owner)
+    if (slots.has(owner) || !box) continue
+    placeChips(box, chips, nodes)
+    const parts = owner.split('.')
+    for (let depth = parts.length - 1; depth >= 1; depth--) {
+      const frame = byId.get(parts.slice(0, depth).join('.'))
+      if (!frame?.isGroup) continue
+      const left = Math.min(...chips.map((c) => c.x)) - GROUP_PAD
+      const right = Math.max(...chips.map((c) => c.x + c.w)) + GROUP_PAD
+      if (left < frame.x) { frame.w += frame.x - left; frame.x = left }
+      if (right > frame.x + frame.w) frame.w = right - frame.x
+    }
   }
 }
 
@@ -354,7 +382,9 @@ function placeBoxes(doc: MapDocument, sized: PlacedNode[], edges: MapEdge[], spr
   for (const [id, sl] of slots) colW.set(sl.col, Math.max(colW.get(sl.col)!, reach(id) * 2))
   // Boxes with no line and no chips are asides (public sites, ops…): a last row of their
   // own, so they don't pose as entries in the top row.
-  const linked = new Set(edges.flatMap((e) => [e.from, e.to]))
+  // A line to a box inside a group (cf.app) also links the group itself, otherwise a
+  // group whose lines all go to its children would sink to the aside row.
+  const linked = new Set(edges.flatMap((e) => [e.from, e.to]).flatMap((id) => [id, id.split('.')[0]!]))
   // Notes are never asides: they explain the box beside them and must stay there.
   // With layer bands the band already says where a box belongs — no aside row there.
   const banded = doc.layers.length > 1
@@ -518,6 +548,7 @@ function placeBoxes(doc: MapDocument, sized: PlacedNode[], edges: MapEdge[], spr
     placedBlocks.push({ x, w: n.w, top: tops.get(id)!, h: n.h })
     ax = x + n.w + ASIDE_GAP
   }
+  placeNestedChips({ copies, slots, byId, nodes })
   fitGroupsToChildren(nodes)
   const lanePadMax = nodes.some((n) => n.lane) ? LANE_PAD : 0
   const shiftLeft = Math.min(...nodes.map((n) => n.x)) - lanePadMax - PAD.left
