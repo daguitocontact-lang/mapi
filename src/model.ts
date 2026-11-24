@@ -1,4 +1,4 @@
-export const NODE_STYLES = ['solid', 'dashed', 'text'] as const
+export const NODE_STYLES = ['solid', 'dashed', 'text', 'note'] as const
 export type NodeStyle = (typeof NODE_STYLES)[number]
 
 /** What a box IS — every shape always means the same thing, so maps read alike. */
@@ -76,9 +76,21 @@ export type MapDocument = {
   summary: string | null
   /** Plain-language "what is this piece and what is it for", per node id (`about <id> <text>`). */
   about: Record<string, string>
+  /** Longer text kept in its own file, per node id (`doc <id> <file>[#section]`). */
+  docs: Record<string, DocRef>
   layers: string[]
   nodes: MapNode[]
   edges: MapEdge[]
+}
+
+/** Where a box's long text lives: a file next to the map and, optionally, one section of it. */
+export type DocRef = { path: string; section: string | null }
+
+/** `prompt/system.txt#FRAUD RULE` → the file and, optionally, the section inside it. */
+export function parseDocRef(raw: string): DocRef {
+  const hash = raw.indexOf('#')
+  if (hash < 0) return { path: raw.trim(), section: null }
+  return { path: raw.slice(0, hash).trim(), section: raw.slice(hash + 1).trim() || null }
 }
 
 export const ISSUE_LEVELS = ['error', 'warning'] as const

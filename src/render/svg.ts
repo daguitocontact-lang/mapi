@@ -7,6 +7,7 @@ import { ICON_TILE, ID_SIZE } from '../layout/build'
 import { labelOffsetY, roundedRectPath, shapePath } from './shapes'
 import { getIcon } from '../icons'
 import { textWidth } from '../measure'
+import { NOTE_TITLE } from '../docs'
 
 const ARROW_LEN = 10
 
@@ -96,7 +97,44 @@ function drawIconTile(node: PlacedNode, palette: Palette, showIds: boolean): str
   return `<g data-id="${escapeXml(node.id)}"${ref} cursor="pointer">${art + label + idTag + badge}</g>`
 }
 
-function drawNode(node: PlacedNode, palette: Palette, showIds: boolean, branch: string | null): string {
+const NOTE_FONT = 12
+const NOTE_FOLD = 12
+
+/** A sticky note: paper with a folded corner, text aligned left like something written. */
+function drawNote(node: PlacedNode, palette: Palette, doc: string | null): string {
+  const { x, y, w, h } = node
+  const f = NOTE_FOLD
+  const paper = `M ${x} ${y} H ${x + w - f} L ${x + w} ${y + f} V ${y + h} H ${x} Z`
+  const fold = `M ${x + w - f} ${y} V ${y + f} H ${x + w}`
+  // The author's title (if any) reads as a heading over the excerpt of the document.
+  const lines = node.label.split('\n')
+  const titled = lines[0]!.startsWith(NOTE_TITLE)
+  const lineHeight = NOTE_FONT * 1.35
+  const top = y + h / 2 - ((lines.length - 1) * lineHeight) / 2
+  const text = lines
+    .map((line, i) => {
+      const bold = titled && i === 0
+      return `<text x="${x + 14}" y="${top + i * lineHeight}" font-size="${NOTE_FONT}" fill="${palette.text}"${bold ? ' font-weight="600"' : ''} text-anchor="start" dominant-baseline="middle">${escapeXml(bold ? line.slice(NOTE_TITLE.length) : line)}</text>`
+    })
+    .join('')
+  const mark = doc ? ` data-doc="${escapeXml(doc)}"` : ''
+  return (
+    `<g data-id="${escapeXml(node.id)}"${mark} cursor="pointer">` +
+    `<path d="${paper}" fill="${palette.noteFill}" stroke="${palette.noteStroke}" stroke-width="1"/>` +
+    `<path d="${fold}" fill="none" stroke="${palette.noteStroke}" stroke-width="1"/>` +
+    `${text}${doc ? docIcon(x + w - 22, y + h - 18, palette) : ''}</g>`
+  )
+}
+
+/** "Has a document" mark: three short lines, bottom-right — click the box to read it. */
+function docIcon(x: number, y: number, palette: Palette): string {
+  const line = (dy: number, len: number) =>
+    `<line x1="${x}" y1="${y + dy}" x2="${x + len}" y2="${y + dy}" stroke="${palette.muted}" stroke-width="1.4" stroke-linecap="round"/>`
+  return `<g pointer-events="none">${line(0, 12) + line(4, 12) + line(8, 7)}</g>`
+}
+
+function drawNode(node: PlacedNode, palette: Palette, showIds: boolean, branch: string | null, doc: string | null = null): string {
+  if (node.style === 'note' && !node.isGroup) return drawNote(node, palette, doc)
   const opts: Stroke = {
     // Reference chips (copies of a shared box) read lighter than the boxes that use them.
     stroke: node.color ? OUTLINE[node.color]! : node.style === 'dashed' || node.attachedTo ? palette.muted : branch ?? palette.nodeStroke,
@@ -167,7 +205,15 @@ function drawNode(node: PlacedNode, palette: Palette, showIds: boolean, branch: 
   // "Opens another map" mark: a small box-with-arrow drawn in the top-right corner.
   const icon = node.link ? linkIcon(node.x + card.w - 16, node.y + 8, palette) : ''
   const badge = drawBadge(node, node.x + card.w - BADGE - 8, node.y + 8)
-  return `<g data-id="${escapeXml(node.id)}"${drill}${ref} ${link} cursor="pointer">${stack + body + logoSvg + label + icon + idTag + badge}</g>`
+  // A diamond has no bottom-right corner: its mark sits inside, under the question.
+  const docMark =
+    doc && !node.isGroup
+      ? shape === 'decision'
+        ? docIcon(node.x + card.w / 2 - 6, node.y + card.h * 0.7, palette)
+        : docIcon(node.x + card.w - 22, node.y + card.h - 14, palette)
+      : ''
+  const docAttr = doc ? ` data-doc="${escapeXml(doc)}"` : ''
+  return `<g data-id="${escapeXml(node.id)}"${drill}${ref}${docAttr} ${link} cursor="pointer">${stack + body + logoSvg + label + icon + idTag + badge + docMark}</g>`
 }
 
 function arrowHead(tip: [number, number], from: [number, number], opts: Stroke): string {
@@ -351,10 +397,18 @@ export type RenderOptions = {
   background?: boolean
   /** Print each box's id under its label so a screenshot maps straight to the source. */
   showIds?: boolean
+  /** Ids that have a `doc` (full or short form); their boxes get the document mark. */
+  docIds?: Set<string>
 }
 
 export function renderSvg(placed: Placed, options: RenderOptions): string {
   const p = paletteFor(options.theme)
+  const docOf = (id: string): string | null => {
+    const ids = options.docIds
+    if (!ids) return null
+    const short = id.split('.').pop()!
+    return ids.has(id) ? id : ids.has(short) ? short : null
+  }
   const background =
     options.background === false
       ? ''
@@ -379,13 +433,13 @@ export function renderSvg(placed: Placed, options: RenderOptions): string {
     drawBands(placed, p),
     drawLanes(placed, p),
     drawUsePlates(placed, p),
-    ...groups.map((n) => drawNode(n, p, options.showIds ?? false, null)),
+    ...groups.map((n) => drawNode(n, p, options.showIds ?? false, null, docOf(n.id))),
     // Edges that hop over others are drawn last so their hop sits on top.
     ...placed.edges
       .map((e, i) => ({ i, hopsAt: hops.filter((h) => h.edge === i).map((h) => h.at) }))
       .sort((p, q) => p.hopsAt.length - q.hopsAt.length)
       .map(({ i, hopsAt }) => drawEdge({ edge: placed.edges[i]!, palette: p, hops: hopsAt, hasStory })),
-    ...leaves.map((n) => drawNode(n, p, options.showIds ?? false, nodeBranch(placed, n.id, p))),
+    ...leaves.map((n) => drawNode(n, p, options.showIds ?? false, nodeBranch(placed, n.id, p), docOf(n.id))),
     '</svg>',
   ].join('')
 }

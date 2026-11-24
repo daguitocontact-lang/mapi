@@ -8,6 +8,7 @@ import { parseMapi } from './parse'
 import { renderMap } from './render-map'
 import type { MapNode, ParseError } from './model'
 import { compareSteps } from './model'
+import { docFor, readDocFile } from './docs'
 import type { RenderTheme } from './render/theme'
 import { RENDER_THEMES, paletteFor } from './render/theme'
 import { viewerPage } from './viewer-page'
@@ -31,6 +32,8 @@ type RenderRequest = {
   focus: string | null
   context: boolean
   showIds: boolean
+  /** Maps folder: docs may only be read from inside it. */
+  root: string
 }
 
 /**
@@ -79,7 +82,7 @@ type Component = { id: string; label: string; about: string | null; group: strin
 /** Pieces for the architecture side panel: top-level boxes, and groups' children under their group. */
 function componentsOf(nodes: MapNode[], about: Record<string, string>, group: string | null = null): Component[] {
   return nodes.flatMap((n) => {
-    if (n.style === 'text') return []
+    if (n.style === 'text' || n.style === 'note') return []
     const name = n.label.replace(/\n/g, ' ')
     if (n.children.length > 0 && !n.collapsed) return componentsOf(n.children, about, n.label.split('\n')[0]!)
     // Children carry a qualified id (`app.web`); `about` may use either form.
@@ -119,9 +122,16 @@ function checkCodeAnchors(nodes: MapNode[], repoRoot: string): ParseError[] {
   })
 }
 
-async function renderFile({ path, source, theme, focus, context, showIds }: RenderRequest) {
+async function renderFile({ path, source, theme, focus, context, showIds, root }: RenderRequest) {
   // The viewer paints the (infinite) background itself, so the SVG ships without one.
-  const { doc, view, placed, svg, placement, errors, warnings } = await renderMap(source, { theme, focus, context, showIds, background: false })
+  const { doc, view, placed, svg, placement, errors, warnings } = await renderMap(source, {
+    theme,
+    focus,
+    context,
+    showIds,
+    background: false,
+    readDoc: (ref) => readDocFile(path, ref, root)?.text ?? null,
+  })
   const repoRoot = findRepoRoot(dirname(path))
   const palette = paletteFor(theme)
   return {
@@ -192,6 +202,15 @@ export function startDevServer(dir: string, port = DEFAULT_PORT): void {
         const ok = file !== null && restoreVersion(root, file, url.searchParams.get('version') ?? '')
         return json(res, { ok }, ok ? 200 : 404)
       }
+      if (url.pathname === '/doc') {
+        if (!file) return json(res, { error: 'map not found' }, 404)
+        const { doc } = parseMapi(readFileSync(join(root, file), 'utf8'))
+        const id = url.searchParams.get('id') ?? ''
+        const ref = docFor(doc, id)
+        const found = ref ? readDocFile(join(root, file), ref, root) : null
+        if (!ref || !found) return json(res, { error: ref ? `"${ref.path}" not found inside the maps folder` : `no doc for "${id}"` }, 404)
+        return json(res, { id, path: found.path.slice(root.length + 1), section: found.section, line: found.line, text: found.text })
+      }
       if (url.pathname === '/svg') {
         if (!file) return json(res, { svg: '', errors: [{ line: 0, message: 'map not found' }] }, 404)
         const version = url.searchParams.get('version')
@@ -201,7 +220,7 @@ export function startDevServer(dir: string, port = DEFAULT_PORT): void {
         const focus = url.searchParams.get('focus') || null
         const context = url.searchParams.get('context') === '1'
         const showIds = url.searchParams.get('ids') === '1'
-        return json(res, await renderFile({ path: join(root, file), source, theme, focus, context, showIds }))
+        return json(res, await renderFile({ path: join(root, file), source, theme, focus, context, showIds, root }))
       }
       const first = listLibrary(root)[0]?.path ?? ''
       const html = viewerPage(url.pathname === '/view' && file ? file : first)

@@ -136,6 +136,7 @@ examples/         generic sample maps
 | `title …` / `summary …` | Name and the one idea a reader must get first. |
 | `layers A, B, C` + `layer A` | Optional bands (flows). Architecture maps usually skip them. |
 | `about <id> <text>` | Plain-language "what is this piece", shown in the side panel. |
+| `doc <id> <file>[#Section]` | Its long text (a prompt, a spec) kept in its own file, relative to the map. The box gets a document mark; click it to read that section (viewer: side reader; VS Code / Kiro: opens the file there). A section runs from its heading — `## Name` or an ALL-CAPS `NAME:` label — to the next one. |
 
 ### Boxes — `id: Label\nsecond line [attributes]`
 
@@ -143,6 +144,7 @@ examples/         generic sample maps
 |---|---|
 | `actor` `store` `external` `decision` `icon` | Shape: person, data, third party, diamond, big logo over its name. |
 | `dashed` `text` | Optional/failure box; a note (explains the box next to it). |
+| `note` | Sticky note on the canvas showing an excerpt of the box's `doc` (its label, if any, goes first). |
 | `icon=aws-lambda` / `icon=lucide:users` | Logo (Iconify `logos`, plus the built-in `daguito`) or line glyph (`lucide:` prefix). On a group: left of its title. |
 | `col=2` / `col=1.85` | Column (architecture). Fractions sit between columns; the number counts. |
 | `row=services` | Every box with the same row name sits at the same height. |

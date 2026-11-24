@@ -175,7 +175,9 @@
     stage.onclick = (e) => {
       if (stage.dataset.dragged) return
       const link = e.target.closest('g[data-link]')
-      if (link) vscode.postMessage({ type: 'openMap', name: link.getAttribute('data-link') })
+      if (link) return vscode.postMessage({ type: 'openMap', name: link.getAttribute('data-link') })
+      const doc = e.target.closest('g[data-doc]')
+      if (doc) vscode.postMessage({ type: 'openDoc', id: doc.getAttribute('data-doc') })
     }
     stage.ondblclick = (e) => {
       const group = e.target.closest('g[data-drill]')

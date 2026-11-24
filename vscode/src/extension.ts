@@ -2,10 +2,13 @@ import { basename, dirname, join, relative, sep } from 'node:path'
 import * as vscode from 'vscode'
 import { listLibrary, resolveMapPath } from '../../src/library'
 import { renderMap } from '../../src/render-map'
+import { docFor, readDocFile } from '../../src/docs'
+import { parseMapi } from '../../src/parse'
 
 type DrawRequest = { type: 'draw'; seq: number; focus: string | null }
 type OpenMapRequest = { type: 'openMap'; name: string }
-type ViewMessage = DrawRequest | OpenMapRequest
+type OpenDocRequest = { type: 'openDoc'; id: string }
+type ViewMessage = DrawRequest | OpenMapRequest | OpenDocRequest
 
 async function findMapsFolder(): Promise<string | null> {
   const workspace = vscode.workspace.workspaceFolders?.[0]
@@ -84,11 +87,25 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         if (target) await openWith(vscode.Uri.file(join(root, target)), 'mapi.preview')
         return
       }
+      if (message.type === 'openDoc') {
+        // The box's long text opens beside the map, at its section.
+        const ref = docFor(parseMapi(document.getText()).doc, message.id)
+        const found = ref ? readDocFile(file, ref, rootOf(file)) : null
+        if (!found) {
+          void vscode.window.showWarningMessage(`Mapi: no document for "${message.id}"`)
+          return
+        }
+        const text = await vscode.workspace.openTextDocument(found.path)
+        const at = new vscode.Position(found.line - 1, 0)
+        await vscode.window.showTextDocument(text, { viewColumn: vscode.ViewColumn.Beside, selection: new vscode.Range(at, at), preview: true })
+        return
+      }
       try {
         const r = await renderMap(document.getText(), {
           focus: message.focus,
           theme: isLight() ? 'light' : 'dark',
           background: false,
+          readDoc: (ref) => readDocFile(file, ref, rootOf(file))?.text ?? null,
         })
         const res = { svg: r.svg, title: r.doc.title, summary: r.doc.summary, errors: r.errors, warnings: r.warnings }
         await panel.webview.postMessage({ type: 'drawn', seq: message.seq, res, fileName: basename(file, '.mapi') })

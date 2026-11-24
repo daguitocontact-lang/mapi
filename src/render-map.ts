@@ -1,8 +1,9 @@
-import type { MapDocument, ParseError } from './model'
+import type { DocRef, MapDocument, ParseError } from './model'
 import type { MapView } from './focus'
 import type { Placed } from './layout'
 import type { RenderTheme } from './render/theme'
 import { describePlacement } from './describe'
+import { resolveNotes } from './docs'
 import { viewDocument } from './focus'
 import { layoutMap } from './layout'
 import { parseMapi } from './parse'
@@ -18,6 +19,8 @@ export type RenderOptions = {
   showIds?: boolean
   /** Paint the page background (off when the viewer draws its own infinite canvas). */
   background?: boolean
+  /** Reads the text a `doc` line points at; fills `[note]` boxes with an excerpt of it. */
+  readDoc?: (ref: DocRef) => string | null
 }
 
 export type RenderedMap = {
@@ -36,11 +39,17 @@ export type RenderedMap = {
 export async function renderMap(source: string, options: RenderOptions = {}): Promise<RenderedMap> {
   const theme = options.theme ?? 'light'
   const parsed = parseMapi(source)
+  const noteWarnings = options.readDoc ? resolveNotes(parsed.doc, options.readDoc) : []
   const view = viewDocument(parsed.doc, { focusId: options.focus ?? null, context: options.context ?? false })
   const placed = await layoutMap(view.doc, { drillable: view.drillable, showIds: options.showIds ?? false })
-  const svg = renderSvg(placed, { theme, background: options.background ?? true, showIds: options.showIds ?? false })
+  const svg = renderSvg(placed, {
+    theme,
+    background: options.background ?? true,
+    showIds: options.showIds ?? false,
+    docIds: new Set(Object.keys(parsed.doc.docs)),
+  })
   const overlaps: ParseError[] = placed.overlaps.map((o) => ({ line: 0, message: `overlap ${o.kind}: ${o.a} × ${o.b}` }))
-  const all = [...parsed.errors, ...overlaps]
+  const all = [...parsed.errors, ...noteWarnings, ...overlaps]
   return {
     doc: parsed.doc,
     view,

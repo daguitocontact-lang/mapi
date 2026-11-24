@@ -1,5 +1,5 @@
 import type { EdgeKind, MapDocument, MapNode, NodeShape, NodeStyle, ParseError } from './model'
-import { MAP_KINDS, NODE_SHAPES, NODE_STYLES } from './model'
+import { MAP_KINDS, NODE_SHAPES, NODE_STYLES, parseDocRef } from './model'
 import type { MapKind } from './model'
 
 const EDGE_RE = /^(?:(\d+(?:\.\d+)?[a-z]?)[)]?\s+)?(\^?[\w.-]+)\s*(<->|-->|->)\s*(\^?[\w.-]+)\s*(?::\s*(.+))?$/
@@ -69,9 +69,12 @@ function parseAttrs(raw: string | undefined): Attrs {
  * Parse `.mapi` source. One statement per line:
  *   kind flow|architecture · title <text> · summary <central idea> · layers A, B, C · layer <name>
  *   about <id> <text>                      (what a piece is, shown in the side panel)
+ *   doc <id> <file>[#Section]              (its long text — a prompt, a spec — kept in its own file;
+ *                                           click the box to read it)
  *   id: Label [dashed, layer=Data] { … }   (a `{` opens a group, `}` closes it)
  *   shapes: [actor] person · [store] data · [external] outside service · [decision] question
  *           with "yes"/"no" edges · default = step
+ *   [note] sticky note on the canvas that shows an excerpt of its `doc`
  *   [always] keeps a box visible in the essentials view (e.g. a failure outcome)
  *   [clone] repeats a shared box next to each user (Redis, the database…) instead of long lines
  *   [top] / [bottom] pins a box to the first row (entries) or the last row (asides)
@@ -93,7 +96,7 @@ function parseAttrs(raw: string | undefined): Attrs {
  * A node inherits the layer active when it is declared unless it sets its own.
  */
 export function parseMapi(source: string): { doc: MapDocument; errors: ParseError[] } {
-  const doc: MapDocument = { kind: 'flow', title: null, summary: null, about: {}, layers: [], nodes: [], edges: [] }
+  const doc: MapDocument = { kind: 'flow', title: null, summary: null, about: {}, docs: {}, layers: [], nodes: [], edges: [] }
   const errors: ParseError[] = []
   const stack: MapNode[] = []
   let currentLayer: string | null = null
@@ -117,6 +120,13 @@ export function parseMapi(source: string): { doc: MapDocument; errors: ParseErro
       const m = line.match(/^about\s+([\w.-]+)\s+(.+)$/)
       if (m) doc.about[m[1]!] = m[2]!.trim()
       else errors.push({ line: lineNo, message: 'about needs "about <id> <description>"' })
+      return
+    }
+    // `doc -> x` is a line from a box called "doc", not a doc reference.
+    if (line.startsWith('doc ') && !EDGE_RE.test(line)) {
+      const m = line.match(/^doc\s+([\w.-]+)\s+(\S.*)$/)
+      if (m) doc.docs[m[1]!] = parseDocRef(m[2]!)
+      else errors.push({ line: lineNo, message: 'doc needs "doc <id> <file>[#section]"' })
       return
     }
     if (line.startsWith('summary ')) {
@@ -194,7 +204,7 @@ export function parseMapi(source: string): { doc: MapDocument; errors: ParseErro
   })
 
   if (stack.length > 0) errors.push({ line: 0, message: `${stack.length} group(s) not closed` })
-  errors.push(...findDanglingEdges(doc), ...checkReadability(doc))
+  errors.push(...findDanglingEdges(doc), ...findUnknownDocs(doc), ...checkReadability(doc))
   return { doc, errors }
 }
 
@@ -213,6 +223,14 @@ function findDanglingEdges(doc: MapDocument): ParseError[] {
       .filter((id) => !ids.has(id))
       .map((id) => ({ line: 0, message: `edge references unknown node "${id}"` })),
   )
+}
+
+function findUnknownDocs(doc: MapDocument): ParseError[] {
+  const ids = collectIds(doc.nodes, new Set())
+  const short = new Set([...ids].map((id) => id.split('.').pop()!))
+  return Object.keys(doc.docs)
+    .filter((id) => !ids.has(id) && !short.has(id))
+    .map((id) => ({ line: 0, message: `doc references unknown box "${id}"` }))
 }
 
 const CODE_TALK = /\.(ts|tsx|js|py|go)\b|\w+\(\)|\b[a-z]+[A-Z][a-zA-Z]+\b|\w+_\w+/

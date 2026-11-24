@@ -105,6 +105,10 @@ body.lib-closed{--libw:12px}body.steps-closed{--panelw:12px}body.steps-closed #s
 #where{position:fixed;left:calc(var(--libw) + 30px);bottom:20px;z-index:2;font:500 12px ui-monospace,Menlo,monospace;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:100px;padding:5px 12px;pointer-events:none}
 .brandlogo{display:block;margin-bottom:8px}
 #viewport{position:absolute;inset:0;width:100%;height:100%;display:block}
+#reader{position:fixed;top:64px;right:calc(var(--panelw) + 24px);width:min(560px,calc(100vw - var(--libw) - var(--panelw) - 64px));max-height:calc(100vh - 140px);display:none;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(10px);box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06);z-index:4}
+#reader.open{display:flex}#reader header{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--line)}
+#reader header code{flex:1;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#reader header button{background:none;border:none;color:var(--muted);font-size:16px;padding:2px 6px}
+#reader pre{margin:0;padding:14px 16px;overflow:auto;white-space:pre-wrap;word-break:break-word;font:400 13px/1.6 Inter,system-ui,sans-serif;color:var(--text);user-select:text}
 </style></head><body>
 <div id="stage"><svg id="viewport" xmlns="http://www.w3.org/2000/svg"><g id="world"></g></svg></div>
 <header id="nav"><button id="libshow" title="Show maps"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg></button><button id="back" class="ghost" title="Back (Esc)">← Back</button><span id="trail"></span><button id="historyBtn" class="ghost">History</button><div id="historyList" class="pop"></div><button id="branch" class="chip" title="Show all paths"></button><button id="issues" class="chip"></button><div id="issueList"></div></header>
@@ -114,6 +118,7 @@ body.lib-closed{--libw:12px}body.steps-closed{--panelw:12px}body.steps-closed #s
 <button id="copy4claude" class="primary">Copy for AI</button>
 </div>
 <div id="panel"></div>
+<div id="reader"><header><code id="readerPath"></code><button id="readerClose" title="Close (Esc)">×</button></header><pre id="readerText"></pre></div>
 <aside id="library"><div class="libhead"><svg class="brandlogo" width="22" height="22" viewBox="0 0 256 256" aria-label="Daguito"><circle cx="128" cy="128" r="120" fill="#0a0a0a" stroke="#ffffff" stroke-width="8"/><path d="M80 68 V188 H116 A60 60 0 0 0 116 68 Z" fill="#ffffff"/></svg><b>Mapi</b><span>Maps · by Daguito</span><button id="libhide" title="Hide maps"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg></button></div><input id="libsearch" placeholder="Search maps…" autocomplete="off"><nav id="libtree"></nav><div id="libfoot"></div></aside>
 <div id="versionBanner"></div>
 <aside id="steps"></aside><button id="stepsshow" title="Show steps">Steps</button>
@@ -322,8 +327,10 @@ function showSelection() {
     connectionList('Sends to', outgoing) +
     (it.code ? '<div><span class="muted">code</span> <code>' + esc(it.code) + '</code></div><button id="opencode">Open in code ›</button> ' : '') +
     (g && g.hasAttribute('data-link') ? '<button id="openmap">Open map: ' + esc(g.getAttribute('data-link')) + ' ›</button>' : '') +
-    (g && g.hasAttribute('data-drill') ? '<button id="enter">Open detail ›</button>' : '')
+    (g && g.hasAttribute('data-drill') ? '<button id="enter">Open detail ›</button>' : '') +
+    (g && g.hasAttribute('data-doc') ? ' <button id="readdoc">Read text ›</button>' : '')
   panel.classList.add('open')
+  if ($('readdoc')) $('readdoc').onclick = () => openReader(g.getAttribute('data-doc'))
   $('copy').onclick = () => navigator.clipboard.writeText(it.id)
   if ($('enter')) $('enter').onclick = () => go(g.getAttribute('data-ref') || it.id)
   if ($('opencode')) $('opencode').onclick = () => {
@@ -518,8 +525,19 @@ stage.addEventListener('dblclick', (e) => {
   if (node.hasAttribute('data-link')) openMap(node.getAttribute('data-link'))
   else if (node.hasAttribute('data-drill')) go(node.getAttribute('data-ref') || node.getAttribute('data-id'))
 })
+/** The full text behind a box's doc line (a prompt section, a spec…), beside the map. */
+async function openReader(id) {
+  const res = await fetch('/doc?file=' + encodeURIComponent(q.get('file')) + '&id=' + encodeURIComponent(id))
+  const body = await res.json().catch(() => ({ error: 'could not read the document' }))
+  $('readerPath').textContent = body.error ? id : body.path + (body.section ? ' # ' + body.section : '') + ' · line ' + body.line
+  $('readerText').textContent = body.error || body.text
+  $('reader').classList.add('open')
+}
+function closeReader() { $('reader').classList.remove('open') }
+$('readerClose').onclick = closeReader
 addEventListener('keydown', (e) => {
   if (e.key !== 'Escape') return
+  if ($('reader').classList.contains('open')) { closeReader(); return }
   if (selected) { selected = null; showSelection(); return }
   back()
 })
