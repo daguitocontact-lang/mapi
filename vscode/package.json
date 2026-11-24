@@ -1,0 +1,104 @@
+{
+  "name": "mapi",
+  "displayName": "Mapi",
+  "description": "See your Mapi maps (business, infra and code) beside the editor.",
+  "version": "0.3.0",
+  "publisher": "daguito",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/daguitocontact-lang/mapi.git"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": [
+    "Visualization"
+  ],
+  "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mapi",
+          "title": "Mapi",
+          "icon": "media/mapi.svg"
+        }
+      ]
+    },
+    "views": {
+      "mapi": [
+        {
+          "type": "webview",
+          "id": "mapi.maps",
+          "name": "Maps"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "mapi.showSource",
+        "title": "Mapi: Show source",
+        "icon": "$(code)"
+      },
+      {
+        "command": "mapi.showMap",
+        "title": "Mapi: Show map",
+        "icon": "$(map)"
+      }
+    ],
+    "configuration": {
+      "title": "Mapi",
+      "properties": {
+        "mapi.mapsFolder": {
+          "type": "string",
+          "default": "",
+          "description": "Folder with the .mapi maps, relative to the workspace. Empty = the folder of the first .mapi found."
+        }
+      }
+    },
+    "customEditors": [
+      {
+        "viewType": "mapi.preview",
+        "displayName": "Mapi map",
+        "selector": [
+          {
+            "filenamePattern": "*.mapi"
+          }
+        ],
+        "priority": "default"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "mapi.showSource",
+          "when": "activeCustomEditorId == mapi.preview",
+          "group": "navigation"
+        },
+        {
+          "command": "mapi.showMap",
+          "when": "resourceExtname == .mapi && !activeCustomEditorId",
+          "group": "navigation"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "package": "tsup && vsce package"
+  },
+  "devDependencies": {
+    "@types/vscode": "1.90.0",
+    "@vscode/vsce": "3.2.1",
+    "tsup": "^8.3.5"
+  },
+  "dependencies": {
+    "@iconify-json/logos": "1.2.4",
+    "@iconify-json/lucide": "1.2.151",
+    "elkjs": "0.10.0"
+  }
+}

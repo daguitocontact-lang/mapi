@@ -1,0 +1,172 @@
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+}
+body {
+  font: 400 13px/1.4 Inter, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.mapi-view {
+  --mapi-bg: #fafafa;
+  --mapi-surface: #ffffff;
+  --mapi-surface-hover: #f2f2f2;
+  --mapi-text: #0a0a0a;
+  --mapi-muted: rgba(0, 0, 0, 0.4);
+  --mapi-muted-hover: rgba(0, 0, 0, 0.6);
+  --mapi-border: rgba(0, 0, 0, 0.05);
+  --mapi-border-strong: rgba(0, 0, 0, 0.1);
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--mapi-bg);
+  color: var(--mapi-text);
+}
+body.vscode-dark .mapi-view,
+body.vscode-high-contrast .mapi-view {
+  --mapi-bg: #0a0a0a;
+  --mapi-surface: #171717;
+  --mapi-surface-hover: #222222;
+  --mapi-text: #fafafa;
+  --mapi-muted: rgba(255, 255, 255, 0.45);
+  --mapi-muted-hover: rgba(255, 255, 255, 0.7);
+  --mapi-border: rgba(255, 255, 255, 0.08);
+  --mapi-border-strong: rgba(255, 255, 255, 0.14);
+}
+.mapi-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--mapi-border);
+  background: var(--mapi-surface);
+}
+.mapi-head-text {
+  flex: 1;
+  min-width: 0;
+}
+.mapi-head-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  cursor: pointer;
+}
+.mapi-title {
+  flex: none;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 14px;
+}
+.mapi-summary {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--mapi-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mapi-summary-toggle {
+  flex: none;
+  font-size: 11px;
+  color: var(--mapi-muted);
+  transition: transform 160ms cubic-bezier(0.2, 0, 0, 1);
+}
+.mapi-head-line:hover .mapi-summary,
+.mapi-head-line:hover .mapi-summary-toggle {
+  color: var(--mapi-muted-hover);
+}
+.mapi-head.expanded .mapi-head-line {
+  flex-wrap: wrap;
+}
+.mapi-head.expanded .mapi-summary {
+  flex-basis: 100%;
+  order: 3;
+  white-space: normal;
+  line-height: 1.45;
+}
+.mapi-head.expanded .mapi-summary-toggle {
+  transform: rotate(180deg);
+}
+.mapi-back {
+  flex: none;
+  border: 1px solid var(--mapi-border-strong);
+  background: var(--mapi-surface);
+  color: var(--mapi-text);
+  border-radius: 100px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.mapi-back:hover {
+  background: var(--mapi-surface-hover);
+}
+.mapi-issues {
+  padding: 6px 14px;
+  background: var(--mapi-surface);
+  border-bottom: 1px solid var(--mapi-border);
+  font-size: 11.5px;
+  font-family: ui-monospace, Menlo, monospace;
+}
+.mapi-issue {
+  color: var(--mapi-muted-hover);
+  padding: 1px 0;
+}
+.mapi-issue-error {
+  color: #b42318;
+}
+.mapi-stage {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  cursor: grab;
+}
+.mapi-stage.dragging {
+  cursor: grabbing;
+}
+.mapi-canvas {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+.mapi-canvas.moving {
+  will-change: transform;
+}
+.mapi-canvas svg {
+  display: block;
+}
+.mapi-zoom {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  background: var(--mapi-surface);
+  border: 1px solid var(--mapi-border-strong);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.mapi-zoom-btn {
+  width: 30px;
+  height: 30px;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--mapi-border-strong);
+  color: var(--mapi-text);
+  font-size: 15px;
+  cursor: pointer;
+}
+.mapi-zoom-btn:last-child {
+  border-bottom: 0;
+}
+.mapi-zoom-btn:hover {
+  background: var(--mapi-surface-hover);
+}
