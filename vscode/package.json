@@ -2,7 +2,7 @@
   "name": "mapi",
   "displayName": "Mapi",
   "description": "See your Mapi maps (business, infra and code) beside the editor.",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "daguito",
   "license": "MIT",
   "repository": {

@@ -177,7 +177,7 @@
       const link = e.target.closest('g[data-link]')
       if (link) return vscode.postMessage({ type: 'openMap', name: link.getAttribute('data-link') })
       const doc = e.target.closest('g[data-doc]')
-      if (doc) vscode.postMessage({ type: 'openDoc', id: doc.getAttribute('data-doc') })
+      if (doc) vscode.postMessage({ type: 'readDoc', id: doc.getAttribute('data-doc') })
     }
     stage.ondblclick = (e) => {
       const group = e.target.closest('g[data-drill]')
@@ -211,6 +211,35 @@
     prev.querySelector('.mapi-head').after(box)
   }
 
+  // Reader: the full text behind a box's doc line, floating over the map. It lives on
+  // <body>, not in the drawing, so a re-render (the file changed) doesn't close it.
+  let reader = null
+  function closeReader() {
+    if (reader) reader.remove()
+    reader = null
+  }
+  function showReader(doc) {
+    closeReader()
+    reader = node('div', 'mapi-reader')
+    const head = node('div', 'mapi-reader-head')
+    head.append(node('span', 'mapi-reader-path', doc.error ? doc.id : doc.path + (doc.section ? ' # ' + doc.section : '') + ' · line ' + doc.line))
+    if (!doc.error) {
+      const open = node('button', 'mapi-reader-btn', 'Open file')
+      open.title = 'Open the file at this section'
+      open.onclick = () => vscode.postMessage({ type: 'openDoc', id: doc.id })
+      head.append(open)
+    }
+    const close = node('button', 'mapi-reader-btn mapi-reader-close', '×')
+    close.title = 'Close (Esc)'
+    close.onclick = closeReader
+    head.append(close)
+    reader.append(head, node('pre', 'mapi-reader-text', doc.error || doc.text))
+    document.body.append(reader)
+  }
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeReader()
+  })
+
   let seq = 0
   function draw() {
     seq++
@@ -219,6 +248,7 @@
 
   window.addEventListener('message', ({ data }) => {
     if (data.type === 'changed') return draw()
+    if (data.type === 'doc') return showReader(data)
     if (data.seq !== seq) return
     if (data.type === 'drawn') return paint(data.res, data.fileName)
     if (data.type === 'failed') {

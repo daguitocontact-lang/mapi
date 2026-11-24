@@ -170,3 +170,70 @@ body.vscode-high-contrast .mapi-view {
 .mapi-zoom-btn:hover {
   background: var(--mapi-surface-hover);
 }
+
+.mapi-reader {
+  --r-surface: rgba(255, 255, 255, 0.96);
+  --r-text: #0a0a0a;
+  --r-muted: rgba(0, 0, 0, 0.5);
+  --r-border: rgba(0, 0, 0, 0.1);
+  position: fixed;
+  top: 64px;
+  right: 16px;
+  width: min(520px, calc(100vw - 32px));
+  max-height: calc(100vh - 96px);
+  display: flex;
+  flex-direction: column;
+  background: var(--r-surface);
+  color: var(--r-text);
+  border: 1px solid var(--r-border);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  z-index: 10;
+}
+body.vscode-dark .mapi-reader,
+body.vscode-high-contrast .mapi-reader {
+  --r-surface: rgba(23, 23, 23, 0.96);
+  --r-text: #fafafa;
+  --r-muted: rgba(255, 255, 255, 0.55);
+  --r-border: rgba(255, 255, 255, 0.12);
+}
+.mapi-reader-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--r-border);
+}
+.mapi-reader-path {
+  flex: 1;
+  color: var(--r-muted);
+  font: 12px ui-monospace, Menlo, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mapi-reader-btn {
+  background: none;
+  border: 1px solid var(--r-border);
+  border-radius: 100px;
+  color: var(--r-text);
+  font: 500 12px Inter, system-ui, sans-serif;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.mapi-reader-close {
+  border: none;
+  font-size: 16px;
+  color: var(--r-muted);
+  padding: 2px 6px;
+}
+.mapi-reader-text {
+  margin: 0;
+  padding: 14px 16px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font: 400 13px/1.6 Inter, system-ui, sans-serif;
+  user-select: text;
+}

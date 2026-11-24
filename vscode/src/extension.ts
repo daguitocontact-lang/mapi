@@ -8,7 +8,8 @@ import { parseMapi } from '../../src/parse'
 type DrawRequest = { type: 'draw'; seq: number; focus: string | null }
 type OpenMapRequest = { type: 'openMap'; name: string }
 type OpenDocRequest = { type: 'openDoc'; id: string }
-type ViewMessage = DrawRequest | OpenMapRequest | OpenDocRequest
+type ReadDocRequest = { type: 'readDoc'; id: string }
+type ViewMessage = DrawRequest | OpenMapRequest | OpenDocRequest | ReadDocRequest
 
 async function findMapsFolder(): Promise<string | null> {
   const workspace = vscode.workspace.workspaceFolders?.[0]
@@ -85,6 +86,17 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
         const root = rootOf(file)
         const target = resolveMapPath(root, message.name)
         if (target) await openWith(vscode.Uri.file(join(root, target)), 'mapi.preview')
+        return
+      }
+      if (message.type === 'readDoc') {
+        // Show the box's long text in a reader over the map, without leaving it.
+        const ref = docFor(parseMapi(document.getText()).doc, message.id)
+        const found = ref ? readDocFile(file, ref, rootOf(file)) : null
+        await panel.webview.postMessage(
+          found
+            ? { type: 'doc', id: message.id, path: relative(rootOf(file), found.path), section: found.section, line: found.line, text: found.text }
+            : { type: 'doc', id: message.id, error: ref ? `"${ref.path}" not found next to the map` : `no doc for "${message.id}"` },
+        )
         return
       }
       if (message.type === 'openDoc') {
