@@ -24,7 +24,7 @@ export function registerRenderMapTool(server: McpServer, ctx: McpContext): void 
     async (input) => {
       const src = sourceOf(ctx, input)
       if ('error' in src) return failure(src.error)
-      const r = await renderMap(src.source, { focus: input.focus, context: input.context, style: input.style, theme: input.theme })
+      const r = await renderMap(src.source, { focus: input.focus, context: input.context, theme: input.theme })
       const size = { width: Math.round(r.placed.width), height: Math.round(r.placed.height) }
       if (!input.out) return { content: [text(r.svg)], structuredContent: size }
       if (!input.out.endsWith('.svg') || input.out.includes('..') || input.out.startsWith('/')) {

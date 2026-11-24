@@ -20,7 +20,7 @@ async function everyView(path: string) {
     seen.add(focus)
     for (const context of [false, true]) {
       const view = viewDocument(doc, { focusId: focus, context })
-      const placed = await layoutMap(view.doc, { drillable: view.drillable, style: 'sketch' })
+      const placed = await layoutMap(view.doc, { drillable: view.drillable })
       views.push({ focus, context, crossings: placed.crossings, overlaps: placed.overlaps.map((o) => `${o.kind}: ${o.a} × ${o.b}`) })
       if (!context) stack.push(...[...view.drillable].filter((id) => !seen.has(id)))
     }
@@ -49,7 +49,7 @@ describe('reviewed maps stay readable', () => {
     test(`${path} keeps at most ${budget} crossing(s) at the root`, async () => {
       const { doc } = parseMapi(readFileSync(join(ROOT, path), 'utf8'))
       const view = viewDocument(doc, { focusId: null, context: false })
-      const placed = await layoutMap(view.doc, { drillable: view.drillable, style: 'sketch' })
+      const placed = await layoutMap(view.doc, { drillable: view.drillable })
       expect(placed.crossings).toBeLessThanOrEqual(budget)
     }, 60_000)
   }

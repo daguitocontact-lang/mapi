@@ -1,8 +1,5 @@
-import { RENDER_STYLES, RENDER_THEMES } from './render/theme'
 
 const LEGEND_HTML = '<b>1 · 2 · 3</b> read in order · <b>2a / 2b</b> alternative paths<br><b>bold line</b> story · <b>faint line</b> context<br><b>pill</b> person · <b>box</b> step or data (its logo says which) · <b>diamond</b> decision (yes / no)<br><b>double border</b> external service<br><b>dashed</b> optional / fallback · <b>stack</b> has detail: double-click<br><b>corner arrow</b> opens another map'
-// Excalifont's Latin subset (Excalidraw's current hand-drawn face, OFL).
-const FONT_URL = 'https://unpkg.com/@excalidraw/excalidraw@0.18.0/dist/prod/fonts/Excalifont/Excalifont-Regular-a88b72a24fb54c9f94e3b5fdaa7481c9.woff2'
 
 // Prototype preview page (single self-contained HTML, no build step);
 // this stays a throwaway shell so iterating on the renderer needs no app build.
@@ -13,11 +10,9 @@ export function viewerPage(file: string): string {
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@600;700&display=swap" rel="stylesheet">
 <style>
-:root{--libw:300px;--panelw:340px;--surface:rgba(255,255,255,.92);--line:rgba(0,0,0,.08);--hover:rgba(0,0,0,.04);--chip:#f2f2f2;--seg:#efefef;--strong:#0a0a0a;--strong-inv:#fafafa;--text:#171717;--muted:#6b6b6b;--faint:#a3a3a3;--glow:rgba(0,0,0,.3)}
-body[data-theme=dark]{--surface:rgba(23,23,23,.94);--line:rgba(255,255,255,.08);--hover:rgba(255,255,255,.05);--chip:#262626;--seg:#0a0a0a;--strong:#fafafa;--strong-inv:#0a0a0a;--text:#ededed;--muted:#a3a3a3;--faint:#737373;--glow:#ffffff}
+:root{--libw:300px;--panelw:340px;--surface:rgba(255,255,255,.92);--line:rgba(0,0,0,.08);--hover:rgba(0,0,0,.04);--chip:#f2f2f2;--strong:#0a0a0a;--strong-inv:#fafafa;--text:#171717;--muted:#6b6b6b;--faint:#a3a3a3;--glow:rgba(0,0,0,.3)}
 #nav,#toolbar,#steps,#panel,#status,#issueList{box-shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.06)}
 
-@font-face{font-family:Excalifont;src:url(${FONT_URL}) format('woff2')}
 html,body{margin:0;height:100%;overflow:hidden;color:var(--text);font:400 13px/1.4 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 #trail button{background:none;border:none;padding:2px 4px;color:var(--muted)}#trail button:last-child{color:var(--text)}
 #stage{position:fixed;inset:0;cursor:grab;touch-action:none;user-select:none}
@@ -68,8 +63,6 @@ button,select{font:500 13px Inter,system-ui,sans-serif;color:var(--text);cursor:
 #toolbar{position:fixed;bottom:12px;left:calc(var(--libw) + (100vw - var(--libw) - var(--panelw)) / 2);transform:translateX(-50%);max-width:calc(100vw - var(--libw) - var(--panelw) - 16px);overflow-x:auto;white-space:nowrap;scrollbar-width:none;display:flex;align-items:center;gap:4px;padding:6px;background:var(--surface);border:1px solid var(--line);border-radius:100px;backdrop-filter:blur(10px);z-index:3}
 #toolbar button{white-space:nowrap;flex:none;background:none;border:none;border-radius:100px;padding:7px 12px;color:var(--muted);transition:background .2s cubic-bezier(.2,0,0,1),color .2s cubic-bezier(.2,0,0,1)}
 #toolbar button:hover{background:var(--hover);color:var(--text)}
-.seg{display:flex;background:var(--seg);border-radius:100px;padding:2px}.seg button.on{background:var(--chip) !important;color:var(--text) !important}
-#toolbar .toggle.on{background:var(--strong);color:var(--strong-inv)}#toolbar .toggle.on:hover{opacity:.88;background:var(--strong);color:var(--strong-inv)}
 #toolbar .sep{width:1px;height:20px;background:var(--line);margin:0 4px}
 #toolbar #fit{font-variant-numeric:tabular-nums;min-width:58px}
 #toolbar .primary{background:var(--strong);color:var(--strong-inv);font-weight:600}#toolbar .primary:hover{opacity:.88;background:var(--strong);color:var(--strong-inv)}
@@ -114,14 +107,8 @@ body.lib-closed{--libw:12px}body.steps-closed{--panelw:12px}body.steps-closed #s
 #viewport{position:absolute;inset:0;width:100%;height:100%;display:block}
 </style></head><body>
 <div id="stage"><svg id="viewport" xmlns="http://www.w3.org/2000/svg"><g id="world"></g></svg></div>
-<header id="nav"><button id="libshow" title="Show maps"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg></button><button id="back" class="ghost" title="Back (Esc)">← Back</button><span id="trail"></span><button id="historyBtn" class="ghost">History</button><div id="historyList" class="pop"></div><button id="branch" class="chip" title="Ver todos los caminos"></button><button id="issues" class="chip"></button><div id="issueList"></div></header>
+<header id="nav"><button id="libshow" title="Show maps"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg></button><button id="back" class="ghost" title="Back (Esc)">← Back</button><span id="trail"></span><button id="historyBtn" class="ghost">History</button><div id="historyList" class="pop"></div><button id="branch" class="chip" title="Show all paths"></button><button id="issues" class="chip"></button><div id="issueList"></div></header>
 <div id="toolbar">
-<div class="seg" id="styleSeg"><button data-v="sketch">Sketch</button><button data-v="clean">Clean</button></div>
-<div class="seg" id="themeSeg"><button data-v="dark">Dark</button><button data-v="light">Light</button></div>
-<span class="sep"></span>
-<button id="context" class="toggle" title="Show the technical detail: data, services, backups">Context</button>
-<button id="ids" class="toggle" title="Show each box id (for screenshots)">IDs</button>
-<span class="sep"></span>
 <button id="zoomOut" title="Zoom out">−</button><button id="fit" title="Fit all"><span id="zoom"></span></button><button id="zoomIn" title="Zoom in">+</button>
 <span class="sep"></span>
 <button id="copy4claude" class="primary">Copy for AI</button>
@@ -137,11 +124,7 @@ const q = new URLSearchParams(location.search)
 if (!q.get('file')) q.set('file', ${JSON.stringify(file)})
 const $ = (id) => document.getElementById(id)
 const stage = $('stage'), world = $('world')
-const style = { value: 'sketch' }, theme = { value: 'light' }
-style.value = q.get('style') || 'sketch'; theme.value = q.get('theme') || 'light'
 const view = { x: 0, y: 0, k: 1 }
-let showContext = q.get('context') === '1'
-let showIds = q.get('ids') === '1'
 let size = { w: 1, h: 1 }, grid = { color: '#262626', size: 40 }, fitted = false
 
 function apply() {
@@ -245,7 +228,7 @@ function renderStatus() {
 /** A short, exact text snapshot of what is on screen — better than a screenshot for Claude. */
 function snapshotText() {
   const lines = ['Mapi · file: ' + q.get('file') + ' · level: ' + (q.get('focus') || 'root') +
-    ' · context: ' + (showContext ? 'yes' : 'no') + ' · zoom ' + Math.round(view.k * 100) + '%']
+    ' · zoom ' + Math.round(view.k * 100) + '%']
   if (selected) lines.push('selected: ' + selected + ' "' + labelOf(selected) + '"')
   const vis = []
   for (const it of items) {
@@ -453,10 +436,9 @@ async function refresh() {
 }
 async function draw() {
   renderLibrary()
-  const focus = (q.get('focus') ? '&focus=' + encodeURIComponent(q.get('focus')) : '') + (showContext ? '&context=1' : '') + (showIds ? '&ids=1' : '') + (q.get('version') ? '&version=' + q.get('version') : '')
-  const res = await fetch('/svg?file=' + encodeURIComponent(q.get('file')) + '&style=' + style.value + '&theme=' + theme.value + focus)
+  const focus = (q.get('focus') ? '&focus=' + encodeURIComponent(q.get('focus')) : '') + '&context=1' + (q.get('version') ? '&version=' + q.get('version') : '')
+  const res = await fetch('/svg?file=' + encodeURIComponent(q.get('file')) + '&theme=light' + focus)
   const body = await res.json()
-  document.body.dataset.theme = theme.value
   world.innerHTML = body.svg
   size = { w: body.width || 1, h: body.height || 1 }
   grid = { color: body.grid, size: body.gridSize }
@@ -554,13 +536,6 @@ stage.addEventListener('wheel', (e) => {
 }, { passive: false })
 
 $('fit').onclick = () => fit('whole')
-function syncIdsButton() { $('ids').classList.toggle('on', showIds) }
-syncIdsButton()
-$('ids').onclick = () => {
-  showIds = !showIds; syncIdsButton()
-  if (showIds) q.set('ids', '1'); else q.delete('ids')
-  history.replaceState(null, '', '?' + q); refresh()
-}
 $('copy4claude').onclick = async () => {
   const btn = $('copy4claude')
   try { await navigator.clipboard.writeText(snapshotText()); btn.textContent = 'Copied' }
@@ -568,13 +543,6 @@ $('copy4claude').onclick = async () => {
   setTimeout(() => { btn.textContent = 'Copy for AI' }, 1500)
 }
 $('back').onclick = back
-function syncContextButton() { $('context').classList.toggle('on', showContext) }
-syncContextButton()
-$('context').onclick = () => {
-  showContext = !showContext; syncContextButton()
-  if (showContext) q.set('context', '1'); else q.delete('context')
-  history.replaceState(null, '', '?' + q); refresh()
-}
 // Overlaps / parse errors are real problems (red chip); standard warnings are a quiet
 // reminder (neutral chip). Both open a list on click instead of filling the bar.
 function renderIssues(issues) {
@@ -799,17 +767,6 @@ function showVersion(v) {
   refresh()
 }
 $('historyBtn').onclick = openHistory
-function bindSegment(id, state, key) {
-  const seg = $(id)
-  const sync = () => seg.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.v === state.value))
-  seg.querySelectorAll('button').forEach((b) => (b.onclick = () => {
-    state.value = b.dataset.v; sync(); q.set(key, state.value)
-    history.replaceState(null, '', '?' + q); refresh()
-  }))
-  sync()
-}
-bindSegment('styleSeg', style, 'style')
-bindSegment('themeSeg', theme, 'theme')
 function zoomBy(f) {
   const cx = libW() + (innerWidth - libW() - panelW()) / 2, cy = innerHeight / 2
   const k = Math.min(12, Math.max(0.1, view.k * f))

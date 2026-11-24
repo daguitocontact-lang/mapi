@@ -1,4 +1,3 @@
-import type { RenderStyle } from '../render/theme'
 import { textWidth } from '../measure'
 import type { Box, Overlap, Placed, PlacedEdge, PlacedNode } from './types'
 import { BAND_LABEL_X_FROM_RIGHT, FONT_SIZE, GROUP_ICON } from './types'
@@ -55,23 +54,23 @@ function shareEndpoint(p: PlacedEdge, q: PlacedEdge): boolean {
 }
 
 /** Where a group's title (and its icon, if any) is drawn — text no line or label may cover. */
-export function groupTitleBox(g: PlacedNode, style: RenderStyle): Box {
+export function groupTitleBox(g: PlacedNode): Box {
   const icon = g.icon ? GROUP_ICON + 6 : 0
-  return { x: g.x + 12, y: g.y + 8, w: icon + textWidth(g.label.split('\n')[0]!, FONT_SIZE - 1, style) + 8, h: g.icon ? GROUP_ICON + 4 : 20 }
+  return { x: g.x + 12, y: g.y + 8, w: icon + textWidth(g.label.split('\n')[0]!, FONT_SIZE - 1) + 8, h: g.icon ? GROUP_ICON + 4 : 20 }
 }
 
-function textRects(placed: Placed, style: RenderStyle): Array<{ id: string; box: Box }> {
+function textRects(placed: Placed): Array<{ id: string; box: Box }> {
   const bands = placed.bands.map((b) => ({
     id: `layer:${b.name}`,
-    box: { x: placed.width - BAND_LABEL_X_FROM_RIGHT, y: b.top, w: textWidth(b.name, FONT_SIZE, style), h: 24 },
+    box: { x: placed.width - BAND_LABEL_X_FROM_RIGHT, y: b.top, w: textWidth(b.name, FONT_SIZE), h: 24 },
   }))
   const title = placed.title
-    ? [{ id: 'title', box: { x: 60, y: 38, w: textWidth(placed.title, 26, style), h: 36 } }]
+    ? [{ id: 'title', box: { x: 60, y: 38, w: textWidth(placed.title, 26), h: 36 } }]
     : []
   const labels = placed.edges.flatMap((e, i) => (e.labelBox ? [{ id: `label:e${i}`, box: e.labelBox }] : []))
   const groupTitles = placed.nodes
     .filter((n) => n.isGroup)
-    .map((g) => ({ id: `group:${g.id}`, box: groupTitleBox(g, style) }))
+    .map((g) => ({ id: `group:${g.id}`, box: groupTitleBox(g) }))
   return [...bands, ...title, ...labels, ...groupTitles]
 }
 
@@ -140,8 +139,8 @@ function textOverlaps(placed: Placed, texts: Array<{ id: string; box: Box }>): O
 }
 
 /** Every hard-rule violation (things drawn on top of each other) plus the soft crossing count. */
-export function inspect(placed: Placed, style: RenderStyle): { overlaps: Overlap[]; crossings: number } {
-  const texts = textRects(placed, style)
+export function inspect(placed: Placed): { overlaps: Overlap[]; crossings: number } {
+  const texts = textRects(placed)
   const laneHits: Overlap[] = placed.lanes.flatMap((lane) =>
     placed.nodes
       .filter((n) => !n.isGroup && n.lane !== lane.name && intersects(n, lane.box))

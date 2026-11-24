@@ -1,6 +1,5 @@
 import type { ElkNode, ElkExtendedEdge, ElkLabel } from 'elkjs/lib/elk-api.js'
 import type { MapDocument, MapEdge, MapNode, NodeShape } from '../model'
-import type { RenderStyle } from '../render/theme'
 import { textWidth } from '../measure'
 import type { LayerBand, PlacedEdge, PlacedNode } from './types'
 import { CHIP_FONT, CHIP_LOGO, CHIP_LOGO_GAP, CHIP_PAD_X, CHIP_PAD_Y, EDGE_LABEL_SIZE, FONT_SIZE, GROUP_LABEL_SIZE, STEP_BADGE } from './types'
@@ -39,7 +38,6 @@ export type Candidate = { name: string; options: Record<string, string> }
 export type BuildInput = {
   doc: MapDocument
   edges: MapEdge[]
-  style: RenderStyle
   candidate: Candidate
   /** Multiplies every spacing — raised when a layout still has overlaps. */
   spread: number
@@ -49,9 +47,9 @@ export type BuildInput = {
   stacked: Set<string>
 }
 
-function textBox(text: string, size: number, style: RenderStyle): { width: number; height: number } {
+function textBox(text: string, size: number): { width: number; height: number } {
   const lines = text.split('\n')
-  const width = Math.max(...lines.map((l) => textWidth(l, size, style)))
+  const width = Math.max(...lines.map((l) => textWidth(l, size)))
   return { width, height: lines.length * size * LINE_HEIGHT }
 }
 
@@ -100,7 +98,7 @@ function toElk(node: MapNode, input: BuildInput): ElkNode {
   // Semi-interactive ordering reads the INITIAL x of each node: seed it from the column.
   const seed = node.col !== null ? { x: node.col * COLUMN_SEED, y: 0 } : {}
   if (node.children.length === 0 && node.attachedTo) {
-    const t = textBox(node.label, CHIP_FONT, input.style)
+    const t = textBox(node.label, CHIP_FONT)
     const room = input.stacked.has(node.id) || input.stacked.has(node.cloneOf ?? '') ? STACK_ROOM : 0
     return {
       id: node.id,
@@ -111,11 +109,11 @@ function toElk(node: MapNode, input: BuildInput): ElkNode {
     }
   }
   if (node.children.length === 0 && node.shape === 'icon') {
-    const t = textBox(node.label, FONT_SIZE, input.style)
+    const t = textBox(node.label, FONT_SIZE)
     return { id: node.id, ...seed, width: Math.max(t.width, ICON_TILE) + 16, height: ICON_TILE + 10 + t.height + 8, layoutOptions }
   }
   if (node.children.length === 0) {
-    const t = textBox(node.label, FONT_SIZE, input.style)
+    const t = textBox(node.label, FONT_SIZE)
     const extra = SHAPE_PADDING[node.shape]
     const stackRoom = input.stacked.has(node.id) ? STACK_ROOM : 0
     const ports =
@@ -143,7 +141,7 @@ function toElk(node: MapNode, input: BuildInput): ElkNode {
     }
   }
   // A group must be at least as wide as its own title, or the title spills out.
-  const title = textBox(node.label, GROUP_LABEL_SIZE, input.style)
+  const title = textBox(node.label, GROUP_LABEL_SIZE)
   return {
     id: node.id,
     ...seed,
@@ -172,8 +170,8 @@ function spacing(spread: number, compact: boolean): Record<string, string> {
 }
 
 /** Reserve room for the step badge and the label text side by side. */
-function edgeLabel(e: MapEdge, i: number, style: RenderStyle): ElkLabel {
-  const text = e.label ? textBox(e.label, EDGE_LABEL_SIZE, style) : { width: 0, height: 0 }
+function edgeLabel(e: MapEdge, i: number): ElkLabel {
+  const text = e.label ? textBox(e.label, EDGE_LABEL_SIZE) : { width: 0, height: 0 }
   // Wider pill per extra character ("2a", and "↑5" for outer-story steps).
   const shown = e.step === null ? '' : e.outer ? `↑${e.step}` : e.step
   const badgeW = STEP_BADGE + Math.max(0, shown.length - 1) * 8
@@ -233,7 +231,7 @@ function stackingEdges(nodes: MapNode[], linked: Set<string>): ElkExtendedEdge[]
 export function buildGraph(input: BuildInput): ElkNode {
   const ports = decisionPorts(input.edges, collectDecisions(input.doc.nodes, new Set()))
   const edges: ElkExtendedEdge[] = input.edges.map((e, i) => {
-    const labels: ElkLabel[] = e.label || e.step !== null ? [edgeLabel(e, i, input.style)] : []
+    const labels: ElkLabel[] = e.label || e.step !== null ? [edgeLabel(e, i)] : []
     // The numbered story must read top → down: give its edges direction priority.
     const layoutOptions: Record<string, string> =
       e.step !== null ? { 'elk.layered.priority.direction': '10' } : {}

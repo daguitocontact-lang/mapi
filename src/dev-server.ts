@@ -8,8 +8,8 @@ import { parseMapi } from './parse'
 import { renderMap } from './render-map'
 import type { MapNode, ParseError } from './model'
 import { compareSteps } from './model'
-import type { RenderStyle, RenderTheme } from './render/theme'
-import { RENDER_STYLES, RENDER_THEMES, paletteFor } from './render/theme'
+import type { RenderTheme } from './render/theme'
+import { RENDER_THEMES, paletteFor } from './render/theme'
 import { viewerPage } from './viewer-page'
 import { listLibrary, resolveMapPath } from './library'
 import { listVersions, readVersion, recordVersion, restoreVersion } from './history'
@@ -27,7 +27,6 @@ type RenderRequest = {
   path: string
   /** Map text to render — the current file or an older version. */
   source: string
-  style: RenderStyle
   theme: RenderTheme
   focus: string | null
   context: boolean
@@ -44,7 +43,7 @@ async function moveToColumn(path: string, id: string, x: number): Promise<number
   const source = readFileSync(path, 'utf8')
   const { doc } = parseMapi(source)
   if (!doc.nodes.some((n) => n.id === id)) return null
-  const placed = await layoutMap(viewDocument(doc, { focusId: null, context: false }).doc, { style: 'sketch' })
+  const placed = await layoutMap(viewDocument(doc, { focusId: null, context: false }).doc, {})
   const centres = doc.nodes
     .filter((n) => n.col !== null && n.id !== id)
     .flatMap((n) => {
@@ -69,7 +68,7 @@ async function moveToColumn(path: string, id: string, x: number): Promise<number
   if (!m) return null
   const attrs = (m[2] ?? '').split(',').map((a) => a.trim()).filter((a) => a && !a.startsWith('col='))
   attrs.push(`col=${col}`)
-  writeFileSync(path, source.replace(line, `${m[1]} [${attrs.join(', ')}]${m[3] ?? ''}`))
+  writeFileSync(path, source.replace(line, () => `${m[1]} [${attrs.join(', ')}]${m[3] ?? ''}`))
   return col
 }
 
@@ -120,11 +119,11 @@ function checkCodeAnchors(nodes: MapNode[], repoRoot: string): ParseError[] {
   })
 }
 
-async function renderFile({ path, source, style, theme, focus, context, showIds }: RenderRequest) {
+async function renderFile({ path, source, theme, focus, context, showIds }: RenderRequest) {
   // The viewer paints the (infinite) background itself, so the SVG ships without one.
-  const { doc, view, placed, svg, placement, errors, warnings } = await renderMap(source, { style, theme, focus, context, showIds, background: false })
+  const { doc, view, placed, svg, placement, errors, warnings } = await renderMap(source, { theme, focus, context, showIds, background: false })
   const repoRoot = findRepoRoot(dirname(path))
-  const palette = paletteFor(style, theme)
+  const palette = paletteFor(theme)
   return {
     svg,
     errors: [...errors, ...warnings, ...checkCodeAnchors(doc.nodes, repoRoot)],
@@ -198,12 +197,11 @@ export function startDevServer(dir: string, port = DEFAULT_PORT): void {
         const version = url.searchParams.get('version')
         const source = version ? readVersion(root, file, version) : readFileSync(join(root, file), 'utf8')
         if (source === null) return json(res, { svg: '', errors: [{ line: 0, message: 'version not found' }] }, 404)
-        const style = pick(url.searchParams.get('style'), RENDER_STYLES, 'sketch')
         const theme = pick(url.searchParams.get('theme'), RENDER_THEMES, 'dark')
         const focus = url.searchParams.get('focus') || null
         const context = url.searchParams.get('context') === '1'
         const showIds = url.searchParams.get('ids') === '1'
-        return json(res, await renderFile({ path: join(root, file), source, style, theme, focus, context, showIds }))
+        return json(res, await renderFile({ path: join(root, file), source, theme, focus, context, showIds }))
       }
       const first = listLibrary(root)[0]?.path ?? ''
       const html = viewerPage(url.pathname === '/view' && file ? file : first)

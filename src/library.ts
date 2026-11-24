@@ -2,7 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { basename, join, normalize, relative, sep } from 'node:path'
 
 /** Folders that hold maps but aren't part of the documentation tree. */
-const HIDDEN_DIRS = new Set(['archivo', '.mapi-history', 'node_modules'])
+const HIDDEN_DIRS = new Set(['archive', '.mapi-history', 'node_modules'])
 
 export type LibraryEntry = {
   /** Path relative to the library root, with `/` separators — the map's identity. */

@@ -1,5 +1,4 @@
 import type { MapDocument } from '../model'
-import type { RenderStyle } from '../render/theme'
 import type { Candidate } from './build'
 import { buildGraph, computeBands, indexNodes, readEdges, readNodes } from './build'
 import { runElk } from './elk'
@@ -106,7 +105,7 @@ function placeDividers(bands: LayerBand[], edges: PlacedEdge[]): LayerBand[] {
 /** Each round widens every spacing; stops at the first round with a clean layout. */
 const SPREADS = [1, 1.4, 1.9, 2.6, 3.4]
 
-export type LayoutOptions = { drillable?: Set<string>; style: RenderStyle; showIds?: boolean }
+export type LayoutOptions = { drillable?: Set<string>; showIds?: boolean }
 
 async function attempt(doc: MapDocument, options: LayoutOptions, candidate: Candidate, spread: number) {
   const known = indexNodes(doc.nodes)
@@ -115,7 +114,6 @@ async function attempt(doc: MapDocument, options: LayoutOptions, candidate: Cand
   const graph = await runElk(buildGraph({
       doc,
       edges,
-      style: options.style,
       candidate,
       spread,
       showIds: options.showIds ?? false,
@@ -135,7 +133,7 @@ async function attempt(doc: MapDocument, options: LayoutOptions, candidate: Cand
     overlaps: [],
     crossings: 0,
   }
-  return { ...placed, ...inspect(placed, options.style) }
+  return { ...placed, ...inspect(placed) }
 }
 
 /**
@@ -154,7 +152,7 @@ async function layoutGrid(source: MapDocument, options: LayoutOptions): Promise<
   const sized = await attempt(source, options, CANDIDATES[0]!, 1)
   let best: Placed | null = null
   for (const spread of SPREADS) {
-    const g = gridLayout({ doc: source, edges, sized, spread, style: options.style })
+    const g = gridLayout({ doc: source, edges, sized, spread })
     const base: Placed = {
       title: source.title,
       width: g.width,
@@ -166,7 +164,7 @@ async function layoutGrid(source: MapDocument, options: LayoutOptions): Promise<
       overlaps: [],
       crossings: 0,
     }
-    const placed = { ...base, ...inspect(base, options.style) }
+    const placed = { ...base, ...inspect(base) }
     if (!best || placed.overlaps.length < best.overlaps.length) best = placed
     if (placed.overlaps.length === 0) return placed
   }

@@ -1,7 +1,7 @@
 import type { MapDocument, ParseError } from './model'
 import type { MapView } from './focus'
 import type { Placed } from './layout'
-import type { RenderStyle, RenderTheme } from './render/theme'
+import type { RenderTheme } from './render/theme'
 import { describePlacement } from './describe'
 import { viewDocument } from './focus'
 import { layoutMap } from './layout'
@@ -9,7 +9,6 @@ import { parseMapi } from './parse'
 import { renderSvg } from './render/svg'
 
 export type RenderOptions = {
-  style?: RenderStyle
   theme?: RenderTheme
   /** Drill into this group/box id (null = the whole map). */
   focus?: string | null
@@ -35,12 +34,11 @@ export type RenderedMap = {
 
 /** The one pipeline every surface uses (viewer, MCP, CLI): text → layout → SVG + placement. */
 export async function renderMap(source: string, options: RenderOptions = {}): Promise<RenderedMap> {
-  const style = options.style ?? 'clean'
   const theme = options.theme ?? 'light'
   const parsed = parseMapi(source)
   const view = viewDocument(parsed.doc, { focusId: options.focus ?? null, context: options.context ?? false })
-  const placed = await layoutMap(view.doc, { drillable: view.drillable, style, showIds: options.showIds ?? false })
-  const svg = renderSvg(placed, { style, theme, background: options.background ?? true, showIds: options.showIds ?? false })
+  const placed = await layoutMap(view.doc, { drillable: view.drillable, showIds: options.showIds ?? false })
+  const svg = renderSvg(placed, { theme, background: options.background ?? true, showIds: options.showIds ?? false })
   const overlaps: ParseError[] = placed.overlaps.map((o) => ({ line: 0, message: `overlap ${o.kind}: ${o.a} × ${o.b}` }))
   const all = [...parsed.errors, ...overlaps]
   return {

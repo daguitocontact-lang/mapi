@@ -1,8 +1,6 @@
-import rough from 'roughjs'
-import type { Options } from 'roughjs/bin/core'
 import type { Placed, PlacedEdge, PlacedNode } from '../layout'
 import { CHIP_FONT, CHIP_LOGO, CHIP_LOGO_GAP, EDGE_LABEL_SIZE, FONT_SIZE, GROUP_ICON, STEP_BADGE, crossingPoints } from '../layout'
-import type { Palette, RenderStyle, RenderTheme } from './theme'
+import type { Palette, RenderTheme } from './theme'
 import { branchColor, paletteFor } from './theme'
 import { isSubStep } from '../model'
 import { ICON_TILE, ID_SIZE } from '../layout/build'
@@ -10,29 +8,21 @@ import { labelOffsetY, roundedRectPath, shapePath } from './shapes'
 import { getIcon } from '../icons'
 import { textWidth } from '../measure'
 
-const generator = rough.generator({
-  // One smooth hand-drawn pass per line, like Excalidraw — the default double
-  // stroke reads as scribbly at diagram scale.
-  options: { disableMultiStroke: true, disableMultiStrokeFill: true, bowing: 0.6, preserveVertices: true },
-})
 const ARROW_LEN = 10
 
-function seedOf(key: string): number {
-  let h = 7
-  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) % 2147483647
-  return h || 1
-}
+type Stroke = { stroke: string; strokeWidth: number; fill?: string }
 
 function escapeXml(text: string): string {
   return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
-function roughPaths(drawable: ReturnType<typeof generator.path>, dashed: boolean): string {
+function strokePath(d: string, s: Stroke, dashed: boolean): string {
   const dash = dashed ? ' stroke-dasharray="6 6"' : ''
-  return generator
-    .toPaths(drawable)
-    .map((p) => `<path d="${p.d}" stroke="${p.stroke}" stroke-width="${p.strokeWidth}" fill="${p.fill ?? 'none'}"${dash}/>`)
-    .join('')
+  return `<path d="${d}" stroke="${s.stroke}" stroke-width="${s.strokeWidth}" fill="${s.fill ?? 'none'}"${dash}/>`
+}
+
+function polylinePath(pts: Array<[number, number]>): string {
+  return pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p[0]},${p[1]}`).join(' ')
 }
 
 type TextArgs = { text: string; x: number; y: number; size: number; color: string; anchor: string; weight?: number; font?: string }
@@ -107,14 +97,11 @@ function drawIconTile(node: PlacedNode, palette: Palette, showIds: boolean): str
 }
 
 function drawNode(node: PlacedNode, palette: Palette, showIds: boolean, branch: string | null): string {
-  const opts: Options = {
+  const opts: Stroke = {
     // Reference chips (copies of a shared box) read lighter than the boxes that use them.
     stroke: node.color ? OUTLINE[node.color]! : node.style === 'dashed' || node.attachedTo ? palette.muted : branch ?? palette.nodeStroke,
     strokeWidth: branch ? 1.6 : 1.2,
-    roughness: palette.roughness,
-    seed: seedOf(node.id),
     fill: node.isGroup ? undefined : palette.fill,
-    fillStyle: 'solid',
   }
   // Groups are always plain containers; leaves draw the shape that says what they are.
   const shape = node.isGroup ? 'step' : node.shape
@@ -123,13 +110,14 @@ function drawNode(node: PlacedNode, palette: Palette, showIds: boolean, branch: 
   const inset = node.stacked ? STACK_OFFSET : 0
   const card = { w: node.w - inset, h: node.h - inset }
   const outline = (dx: number) =>
-    roughPaths(
-      generator.path(shapePath(shape, { x: node.x + dx, y: node.y + dx, ...card }, node.attachedTo ? card.h / 2 : palette.radius), opts),
+    strokePath(
+      shapePath(shape, { x: node.x + dx, y: node.y + dx, ...card }, node.attachedTo ? card.h / 2 : palette.radius),
+      opts,
       node.style === 'dashed',
     )
   const stack = node.stacked ? outline(STACK_OFFSET) : ''
   const chip = node.attachedTo !== null
-  const shadowed = palette.shadow && !node.isGroup && !chip && node.style === 'solid' ? ' filter="url(#soft)"' : ''
+  const shadowed = !node.isGroup && !chip && node.style === 'solid' ? ' filter="url(#soft)"' : ''
   const fontSize = chip ? CHIP_FONT : FONT_SIZE
   const plate = chip ? CHIP_LOGO : LOGO_PLATE
   const plateGap = chip ? CHIP_LOGO_GAP : LOGO_GAP
@@ -140,7 +128,7 @@ function drawNode(node: PlacedNode, palette: Palette, showIds: boolean, branch: 
   let textStart: number | null = null
   let logoSvg = ''
   if (logo) {
-    const textW = Math.max(...node.label.split('\n').map((l) => textWidth(l, fontSize, 'sketch')))
+    const textW = Math.max(...node.label.split('\n').map((l) => textWidth(l, fontSize)))
     const unit = plate + plateGap + textW
     const left = node.x + card.w / 2 - unit / 2
     const cy = node.y + card.h / 2 + labelOffsetY(shape)
@@ -150,7 +138,7 @@ function drawNode(node: PlacedNode, palette: Palette, showIds: boolean, branch: 
     // A small light plate keeps dark logos (Expo, GitHub…) visible on dark themes.
     logoSvg =
       `<rect x="${left}" y="${cy - plate / 2}" width="${plate}" height="${plate}" rx="${chip ? 4 : 7}" fill="${palette.logoPlate}"/>` +
-      `<svg x="${left + inset}" y="${cy - inner / 2}" width="${inner}" height="${inner}" viewBox="0 0 ${logo.width} ${logo.height}" color="${palette.text}">${logo.body}</svg>`
+      `<svg x="${left + inset}" y="${cy - inner / 2}" width="${inner}" height="${inner}" viewBox="0 0 ${logo.width} ${logo.height}" color="${palette.logoInk}">${logo.body}</svg>`
   }
   // A group may carry an icon left of its title (AWS Cloud, VPC, a factory…).
   const groupIcon = node.isGroup && node.icon ? getIcon(node.icon) : null
@@ -182,13 +170,13 @@ function drawNode(node: PlacedNode, palette: Palette, showIds: boolean, branch: 
   return `<g data-id="${escapeXml(node.id)}"${drill}${ref} ${link} cursor="pointer">${stack + body + logoSvg + label + icon + idTag + badge}</g>`
 }
 
-function arrowHead(tip: [number, number], from: [number, number], opts: Options): string {
+function arrowHead(tip: [number, number], from: [number, number], opts: Stroke): string {
   const angle = Math.atan2(tip[1] - from[1], tip[0] - from[0])
   const wing = (offset: number): [number, number] => [
     tip[0] - ARROW_LEN * Math.cos(angle + offset),
     tip[1] - ARROW_LEN * Math.sin(angle + offset),
   ]
-  return roughPaths(generator.linearPath([wing(0.45), tip, wing(-0.45)], opts), false)
+  return strokePath(polylinePath([wing(0.45), tip, wing(-0.45)]), opts, false)
 }
 
 const HOP_RADIUS = 9
@@ -196,8 +184,7 @@ const HOP_HALO = 7
 
 type Hopped = { runs: Array<Array<[number, number]>>; arcs: string[] }
 
-/** Split a polyline at every crossing on its horizontal runs: straight runs stay sketchy,
- *  each hop becomes a clean semicircle (rough.js breaks small arcs into fragments). */
+/** Split a polyline at every crossing on its horizontal runs: each hop becomes a semicircle. */
 function splitAtHops(pts: Array<[number, number]>, hops: Array<[number, number]>): Hopped {
   const runs: Array<Array<[number, number]>> = [[pts[0]!]]
   const arcs: string[] = []
@@ -222,23 +209,21 @@ function splitAtHops(pts: Array<[number, number]>, hops: Array<[number, number]>
   return { runs, arcs }
 }
 
-type EdgeDraw = { edge: PlacedEdge; index: number; palette: Palette; hops: Array<[number, number]>; hasStory: boolean }
+type EdgeDraw = { edge: PlacedEdge; palette: Palette; hops: Array<[number, number]>; hasStory: boolean }
 
 /** The numbered story is drawn bold; unnumbered context edges recede (thin, muted). */
-function drawEdge({ edge, index, palette, hops, hasStory }: EdgeDraw): string {
+function drawEdge({ edge, palette, hops, hasStory }: EdgeDraw): string {
   if (edge.points.length < 2) return ''
   const isContext = hasStory && (edge.step === null || isSubStep(edge.step))
   const branch = branchColor(palette, edge.step)
-  const opts: Options = {
+  const opts: Stroke = {
     stroke: isContext ? palette.muted : branch ?? palette.stroke,
     strokeWidth: isContext ? 0.8 : hasStory ? 1.8 : 1.1,
-    roughness: palette.roughness * 0.6,
-    seed: seedOf(`e${index}`),
   }
   const dashed = edge.kind === 'dashed'
   const pts = edge.points
   const { runs, arcs } = splitAtHops(pts, hops)
-  let out = runs.map((run) => roughPaths(generator.linearPath(run, opts), dashed)).join('')
+  let out = runs.map((run) => strokePath(polylinePath(run), opts, dashed)).join('')
   // The halo (background-coloured, wider) cuts the line underneath so the hop clearly
   // passes OVER it instead of reading as a junction.
   for (const d of arcs) {
@@ -269,15 +254,7 @@ function drawEdgeLabel(edge: PlacedEdge, palette: Palette, isContext: boolean): 
     const pill = outlined
       ? `fill="${palette.background}" stroke="${fill}" stroke-width="1.5"`
       : `fill="${fill}"`
-    if (palette.roughness > 0) {
-      const box = { x: b.x + 0.75, y: cy - STEP_BADGE / 2 + 0.75, w: w - 1.5, h: STEP_BADGE - 1.5 }
-      const opts: Options = outlined
-        ? { stroke: fill, strokeWidth: 1.4, roughness: 0.7, fill: palette.background, fillStyle: 'solid', seed: seedOf(`b${edge.step}`) }
-        : { stroke: fill, strokeWidth: 1, roughness: 0.7, fill, fillStyle: 'solid', seed: seedOf(`b${edge.step}`) }
-      out += roughPaths(generator.path(roundedRectPath(box, STEP_BADGE / 2), opts), false)
-    } else {
-      out += `<rect x="${b.x + 0.75}" y="${cy - STEP_BADGE / 2 + 0.75}" width="${w - 1.5}" height="${STEP_BADGE - 1.5}" rx="${STEP_BADGE / 2}" ${pill}/>`
-    }
+    out += `<rect x="${b.x + 0.75}" y="${cy - STEP_BADGE / 2 + 0.75}" width="${w - 1.5}" height="${STEP_BADGE - 1.5}" rx="${STEP_BADGE / 2}" ${pill}/>`
     const numberColor = outlined ? fill : palette.background
     out += textBlock({ text: shown, x: b.x + w / 2, y: cy + 1, size: EDGE_LABEL_SIZE, color: numberColor, anchor: 'middle', weight: 600 })
     textX += w + 6
@@ -343,8 +320,7 @@ function drawUseTree(owner: PlacedNode, chips: PlacedNode[], palette: Palette): 
 function drawLanes(placed: Placed, palette: Palette): string {
   return placed.lanes
     .map((lane) => {
-      const opts: Options = { stroke: palette.muted, strokeWidth: 1, roughness: palette.roughness * 0.6, seed: seedOf(`lane:${lane.name}`) }
-      const frame = roughPaths(generator.path(roundedRectPath(lane.box, palette.radius + 4), opts), true)
+      const frame = strokePath(roundedRectPath(lane.box, palette.radius + 4), { stroke: palette.muted, strokeWidth: 1 }, true)
       const title = textBlock({ text: lane.name, x: lane.box.x + 16, y: lane.box.y + 16, size: FONT_SIZE - 1, color: palette.muted, anchor: 'start' })
       return frame + title
     })
@@ -357,8 +333,7 @@ function drawBands(placed: Placed, palette: Palette): string {
       const label = textBlock({ text: band.name, x: placed.width - 200, y: band.top + 12, size: FONT_SIZE, color: palette.text, anchor: 'start' })
       if (band.dividerY === null) return label
       const y = band.dividerY
-      const opts: Options = { stroke: palette.muted, strokeWidth: 0.8, roughness: palette.roughness * 0.4, seed: seedOf(band.name) }
-      return label + roughPaths(generator.line(40, y, placed.width - 20, y, opts), true)
+      return label + strokePath(`M40,${y} L${placed.width - 20},${y}`, { stroke: palette.muted, strokeWidth: 0.8 }, true)
     })
     .join('')
 }
@@ -372,7 +347,6 @@ function nodeBranch(placed: Placed, id: string, palette: Palette): string | null
 }
 
 export type RenderOptions = {
-  style: RenderStyle
   theme: RenderTheme
   background?: boolean
   /** Print each box's id under its label so a screenshot maps straight to the source. */
@@ -380,7 +354,7 @@ export type RenderOptions = {
 }
 
 export function renderSvg(placed: Placed, options: RenderOptions): string {
-  const p = paletteFor(options.style, options.theme)
+  const p = paletteFor(options.theme)
   const background =
     options.background === false
       ? ''
@@ -391,7 +365,7 @@ export function renderSvg(placed: Placed, options: RenderOptions): string {
     `<path d="M ${p.gridSize} 0 L 0 0 0 ${p.gridSize}" fill="none" stroke="${p.grid}" stroke-width="1"/></pattern>` +
     `<filter id="soft" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="${options.theme === 'dark' ? 0.5 : 0.08}"/></filter></defs>`
   const title = placed.title
-    ? textBlock({ text: placed.title, x: 60, y: 56, size: 26, color: p.text, anchor: 'start', weight: options.style === 'clean' ? 700 : undefined, font: p.titleFont })
+    ? textBlock({ text: placed.title, x: 60, y: 56, size: 26, color: p.text, anchor: 'start', weight: 700, font: p.titleFont })
     : ''
   const hops = crossingPoints(placed.edges)
   const hasStory = placed.edges.some((e) => e.step !== null && !e.outer && !isSubStep(e.step))
@@ -410,7 +384,7 @@ export function renderSvg(placed: Placed, options: RenderOptions): string {
     ...placed.edges
       .map((e, i) => ({ i, hopsAt: hops.filter((h) => h.edge === i).map((h) => h.at) }))
       .sort((p, q) => p.hopsAt.length - q.hopsAt.length)
-      .map(({ i, hopsAt }) => drawEdge({ edge: placed.edges[i]!, index: i, palette: p, hops: hopsAt, hasStory })),
+      .map(({ i, hopsAt }) => drawEdge({ edge: placed.edges[i]!, palette: p, hops: hopsAt, hasStory })),
     ...leaves.map((n) => drawNode(n, p, options.showIds ?? false, nodeBranch(placed, n.id, p))),
     '</svg>',
   ].join('')

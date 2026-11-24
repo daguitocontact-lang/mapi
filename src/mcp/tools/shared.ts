@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { RENDER_STYLES, RENDER_THEMES } from '../../render/theme'
+import { RENDER_THEMES } from '../../render/theme'
 import type { McpContext } from '../context'
 import { readMap } from '../context'
 
@@ -12,7 +12,6 @@ export const MapInput = z.object({
 })
 
 export const ViewStyle = {
-  style: z.enum(RENDER_STYLES).optional().describe('"clean" (default) or "sketch" (hand-drawn)'),
   theme: z.enum(RENDER_THEMES).optional().describe('"light" (default) or "dark"'),
 }
 

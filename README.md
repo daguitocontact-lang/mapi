@@ -95,14 +95,14 @@ Until the package is on npm, run it from GitHub: `npx -y github:daguitocontact-l
 | `write_map` | Create or overwrite a map; validated first (not saved if it has errors unless `force`). Returns the placement text. |
 | `validate_map` | Errors (syntax, unknown boxes, anything drawn on top of anything), warnings, crossings. |
 | `get_placement` | **See the map as text**: ruler cell of every box, the route of every line (`G1↓G4←F4`), lengths, bends, crossings. |
-| `render_map` | The SVG (or write it to a file) — `clean`/`sketch`, `light`/`dark`. |
+| `render_map` | The SVG (or write it to a file) — `light`/`dark`. |
 
 Resource: `mapi://language` (the same reference). Inspect it locally with `pnpm inspector`.
 
 ## Stack
 
 - **Language & engine**: TypeScript, own grid placer + orthogonal router, ELK for flows
-- **Rendering**: SVG — `clean` (minimal) and `sketch` (hand-drawn, rough.js)
+- **Rendering**: SVG — one clean, minimal look
 - **Icons**: Iconify `logos` (brands, cloud services) and `lucide` (generic glyphs), offline
 - **Viewer**: single-page dev server with live reload, drill-in, history and drag-to-move
 - **Tooling**: Bun (dev, tests) · tsup (build) · pnpm
@@ -182,6 +182,13 @@ boxes down.
 
 Hard rule everywhere: nothing is drawn on top of anything (boxes, lines, labels, titles).
 The tests in `src/__tests__/` enforce it for every map in `examples/`.
+
+Reading rule: every map reads in ONE direction from ONE starting place — top to bottom, or
+left to right. The start sits at that edge, the story only moves forward, and the results sit
+at the opposite edge. Parallel options become side-by-side columns (or rows) that start at the
+same height and each run straight to their own result; draw a shared result twice with
+`same=` instead of pulling lines back across the map. If a reader's eye has to jump back or
+sideways to follow a path, restructure the map.
 
 ## License
 

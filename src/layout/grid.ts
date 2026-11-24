@@ -1,5 +1,4 @@
 import type { MapDocument, MapEdge, MapNode } from '../model'
-import type { RenderStyle } from '../render/theme'
 import { textWidth } from '../measure'
 import type { Box, Lane, Placed, PlacedEdge, PlacedNode } from './types'
 import { crossingPoints, groupTitleBox } from './quality'
@@ -955,9 +954,9 @@ function placeLabel(points: Point[], w: number, avoid: { boxes: Box[]; lines: Bo
 
 // ---------------------------------------------------------------- entry
 
-export type GridInput = { doc: MapDocument; edges: MapEdge[]; sized: Placed; spread: number; style: RenderStyle }
+export type GridInput = { doc: MapDocument; edges: MapEdge[]; sized: Placed; spread: number }
 
-export function gridLayout({ doc, edges, sized, spread, style }: GridInput) {
+export function gridLayout({ doc, edges, sized, spread }: GridInput) {
   const placedByAuthor = flatten(doc.nodes).some((n) => n.at !== null)
   const { nodes, width, height } = placedByAuthor ? placeFree(doc, sized.nodes) : placeBoxes(doc, sized.nodes, edges, spread)
   const lanes = computeLanes(nodes)
@@ -983,7 +982,7 @@ export function gridLayout({ doc, edges, sized, spread, style }: GridInput) {
         ...lanes.filter((l) => !touches(laneMember(nodes, l, e.from)) && !touches(laneMember(nodes, l, e.to))).map((l) => l.box),
         ...(placedByAuthor ? [] : [{ x: width - RIGHT_PAD + 40, y: 0, w: RIGHT_PAD, h: height }]),
         // A group's title is text: no line may run over "Customer account".
-        ...groups.map((g) => groupTitleBox(g, style)),
+        ...groups.map((g) => groupTitleBox(g)),
       ]
       // No shared tracks, even between lines of the same box: each one is followable end to end.
       const from = byId.get(e.from)!
@@ -1024,11 +1023,11 @@ export function gridLayout({ doc, edges, sized, spread, style }: GridInput) {
     outer: e.outer ?? false,
   }))
   // Group titles are text too: a line label must not sit on a group title.
-  const groupTitles = groups.map((g) => groupTitleBox(g, style))
+  const groupTitles = groups.map((g) => groupTitleBox(g))
   const placedLabels: Box[] = []
   placedEdges.forEach((pe, i) => {
     if (!pe.label || pe.points.length < 2) return
-    const w = textWidth(pe.label, EDGE_LABEL_SIZE, style) + 8
+    const w = textWidth(pe.label, EDGE_LABEL_SIZE) + 8
     const lines = placedEdges.flatMap((o, j) => (j === i ? [] : segmentBoxes(o.points)))
     pe.labelBox = placeLabel(pe.points, w, { boxes: [...leaves, ...groupTitles, ...placedLabels], lines })
     placedLabels.push(pe.labelBox)
