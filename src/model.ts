@@ -46,6 +46,8 @@ export type MapNode = {
   color: string | null
   /** `[badge=4]`: a numbered marker in the box's corner (reference-diagram style). */
   badge: string | null
+  /** Has a `doc`: the box makes room for the document mark. Set by the render pipeline. */
+  doc?: boolean
   children: MapNode[]
 }
 

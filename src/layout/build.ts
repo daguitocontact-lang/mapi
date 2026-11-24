@@ -135,7 +135,7 @@ function toElk(node: MapNode, input: BuildInput): ElkNode {
       id: node.id,
       ...seed,
       ...ports,
-      width: t.width + PAD_X * 2 + extra.x + (node.link ? LINK_ICON_SPACE : 0) + stackRoom + (node.icon ? LOGO_SPACE : 0),
+      width: t.width + PAD_X * 2 + extra.x + (node.link ? LINK_ICON_SPACE : 0) + (node.doc ? LINK_ICON_SPACE : 0) + stackRoom + (node.icon ? LOGO_SPACE : 0),
       height: t.height + PAD_Y * 2 + extra.y + stackRoom,
       layoutOptions: { ...layoutOptions, ...portOptions },
     }

@@ -91,6 +91,17 @@ export function docFor(doc: MapDocument, id: string): DocRef | null {
   return doc.docs[id] ?? doc.docs[id.split('.').pop()!] ?? null
 }
 
+/** Flag every box that has a doc, so the layout leaves room for its mark. */
+export function markDocBoxes(doc: MapDocument): void {
+  const walk = (nodes: MapNode[]) => {
+    for (const n of nodes) {
+      if (docFor(doc, n.id)) n.doc = true
+      walk(n.children)
+    }
+  }
+  walk(doc.nodes)
+}
+
 /**
  * Fill every `[note]` box with an excerpt of its document. A note with its own label keeps
  * it as the first line. Missing documents come back as warnings; the box keeps its label.

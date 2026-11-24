@@ -3,7 +3,7 @@ import type { MapView } from './focus'
 import type { Placed } from './layout'
 import type { RenderTheme } from './render/theme'
 import { describePlacement } from './describe'
-import { resolveNotes } from './docs'
+import { markDocBoxes, resolveNotes } from './docs'
 import { viewDocument } from './focus'
 import { layoutMap } from './layout'
 import { parseMapi } from './parse'
@@ -40,6 +40,7 @@ export async function renderMap(source: string, options: RenderOptions = {}): Pr
   const theme = options.theme ?? 'light'
   const parsed = parseMapi(source)
   const noteWarnings = options.readDoc ? resolveNotes(parsed.doc, options.readDoc) : []
+  markDocBoxes(parsed.doc)
   const view = viewDocument(parsed.doc, { focusId: options.focus ?? null, context: options.context ?? false })
   const placed = await layoutMap(view.doc, { drillable: view.drillable, showIds: options.showIds ?? false })
   const svg = renderSvg(placed, {
