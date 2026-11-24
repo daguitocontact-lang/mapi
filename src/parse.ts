@@ -1,6 +1,8 @@
 import type { EdgeKind, MapDocument, MapNode, NodeShape, NodeStyle, ParseError } from './model'
 import { MAP_KINDS, NODE_SHAPES, NODE_STYLES, parseDocRef } from './model'
 import type { MapKind } from './model'
+import type { ChartKind } from './chart'
+import { CHART_KINDS, parseChartData } from './chart'
 
 const EDGE_RE = /^(?:(\d+(?:\.\d+)?[a-z]?)[)]?\s+)?(\^?[\w.-]+)\s*(<->|-->|->)\s*(\^?[\w.-]+)\s*(?::\s*(.+))?$/
 // Only a TRAILING `{` opens a group — labels may contain braces ("{company}-panel").
@@ -25,10 +27,12 @@ type Attrs = {
   icon: string | null
   col: number | null
   lane: string | null
+  chart: ChartKind | null
+  unit: string | null
 }
 
 function parseAttrs(raw: string | undefined): Attrs {
-  const attrs: Attrs = { style: null, shape: 'step', layer: null, collapsed: false, always: false, clone: false, pin: null, same: null, row: null, at: null, color: null, badge: null, link: null, code: null, icon: null, col: null, lane: null }
+  const attrs: Attrs = { style: null, shape: 'step', layer: null, collapsed: false, always: false, clone: false, pin: null, same: null, row: null, at: null, color: null, badge: null, link: null, code: null, icon: null, col: null, lane: null, chart: null, unit: null }
   for (const part of (raw ?? '').split(',').map((p) => p.trim())) {
     if (!part) continue
     if ((NODE_STYLES as readonly string[]).includes(part)) attrs.style = part as NodeStyle
@@ -59,6 +63,10 @@ function parseAttrs(raw: string | undefined): Attrs {
     if (code) attrs.code = code[1]!
     const link = part.match(/^map\s*=\s*([\w-]+)$/)
     if (link) attrs.link = link[1]!
+    const chart = part.match(/^chart\s*=\s*(\w+)$/)
+    if (chart && (CHART_KINDS as readonly string[]).includes(chart[1]!)) attrs.chart = chart[1] as ChartKind
+    const unit = part.match(/^unit\s*=\s*(\S{1,8})$/)
+    if (unit) attrs.unit = unit[1]!
     const layer = part.match(/^layer\s*=\s*(.+)$/)
     if (layer) attrs.layer = layer[1]!.trim()
   }
@@ -87,6 +95,8 @@ function parseAttrs(raw: string | undefined): Attrs {
  *   [icon=aws-lambda] brand logo in the box (Iconify "logos" set)
  *   [code=path/file.ts:42] where the box lives in the code (opens the editor there)
  *   [map=other] links the box to another map (opens it, like a family-tree branch)
+ *   [chart=bar|hbar|line|pie, unit=USD] the box draws a chart of its `data` line:
+ *     data <id> Fargate 120, RDS 80      series <id> 2025, 2026   (then: Fargate 120 140, …)
  *   a -> b: label · a <-> b · a --> b      (dashed)
  *   1 a -> b: label                        (step 1 of the story at this scope)
  *   2a a -> b · 2b c -> b                  (two alternative ways of doing step 2)
@@ -96,7 +106,8 @@ function parseAttrs(raw: string | undefined): Attrs {
  * A node inherits the layer active when it is declared unless it sets its own.
  */
 export function parseMapi(source: string): { doc: MapDocument; errors: ParseError[] } {
-  const doc: MapDocument = { kind: 'flow', title: null, summary: null, about: {}, docs: {}, layers: [], nodes: [], edges: [] }
+  const doc: MapDocument = { kind: 'flow', title: null, summary: null, about: {}, docs: {}, charts: {}, layers: [], nodes: [], edges: [] }
+  const chartKinds = new Map<MapNode, { kind: ChartKind | null; unit: string | null }>()
   const errors: ParseError[] = []
   const stack: MapNode[] = []
   let currentLayer: string | null = null
@@ -127,6 +138,14 @@ export function parseMapi(source: string): { doc: MapDocument; errors: ParseErro
       const m = line.match(/^doc\s+([\w.-]+)\s+(\S.*)$/)
       if (m) doc.docs[m[1]!] = parseDocRef(m[2]!)
       else errors.push({ line: lineNo, message: 'doc needs "doc <id> <file>[#section]"' })
+      return
+    }
+    // `data x -> y` / `series -> y` are lines from boxes with those names, not chart numbers.
+    const numbers = !EDGE_RE.test(line) && line.match(/^(data|series)\s+([\w.-]+)\s+(\S.*)$/)
+    if (numbers) {
+      const [, what, id, rest] = numbers
+      const entry = (doc.charts[id!] ??= { line: lineNo })
+      entry[what as 'data' | 'series'] = rest!.trim()
       return
     }
     if (line.startsWith('summary ')) {
@@ -200,11 +219,12 @@ export function parseMapi(source: string): { doc: MapDocument; errors: ParseErro
       children: [],
     }
     ;(parent ? parent.children : doc.nodes).push(created)
+    if (attrs.chart || attrs.unit) chartKinds.set(created, { kind: attrs.chart, unit: attrs.unit })
     if (opensGroup) stack.push(created)
   })
 
   if (stack.length > 0) errors.push({ line: 0, message: `${stack.length} group(s) not closed` })
-  errors.push(...findDanglingEdges(doc), ...findUnknownDocs(doc), ...checkReadability(doc))
+  errors.push(...attachCharts(doc, chartKinds), ...findDanglingEdges(doc), ...findUnknownDocs(doc), ...checkReadability(doc))
   return { doc, errors }
 }
 
@@ -223,6 +243,56 @@ function findDanglingEdges(doc: MapDocument): ParseError[] {
       .filter((id) => !ids.has(id))
       .map((id) => ({ line: 0, message: `edge references unknown node "${id}"` })),
   )
+}
+
+/**
+ * Join each `data` line to its box. A box with `data` but no `[chart=…]` draws bars; a box with
+ * `[chart=…]` but no `data` is a warning (it keeps its label). Charts always stay visible.
+ */
+function attachCharts(doc: MapDocument, kinds: Map<MapNode, { kind: ChartKind | null; unit: string | null }>): ParseError[] {
+  const out: ParseError[] = []
+  const byId = new Map<string, MapNode>()
+  const walk = (nodes: MapNode[]) =>
+    nodes.forEach((n) => {
+      byId.set(n.id, n)
+      if (!byId.has(n.id.split('.').pop()!)) byId.set(n.id.split('.').pop()!, n)
+      walk(n.children)
+    })
+  walk(doc.nodes)
+  const used = new Set<MapNode>()
+  for (const [id, entry] of Object.entries(doc.charts)) {
+    const node = byId.get(id)
+    if (!node) {
+      out.push({ line: entry.line, message: `data references unknown box "${id}"` })
+      continue
+    }
+    if (!entry.data) {
+      out.push({ line: entry.line, message: `${id}: "series" needs a "data ${id} …" line` })
+      continue
+    }
+    if (node.children.length > 0) {
+      out.push({ line: entry.line, message: `${id}: a group can't draw a chart — give it its own box` })
+      continue
+    }
+    const { points, error } = parseChartData(entry.data)
+    if (error) {
+      out.push({ line: entry.line, message: `data ${id}: ${error}` })
+      continue
+    }
+    const series = (entry.series ?? '').split(',').map((s) => s.trim()).filter(Boolean)
+    const attrs = kinds.get(node)
+    const kind = attrs?.kind ?? 'bar'
+    if (kind === 'pie' && points.some((p) => p.values.length > 1)) {
+      out.push({ line: entry.line, level: 'warning', message: `${id}: a pie draws one number per item — the rest are ignored` })
+    }
+    node.chart = { kind, unit: attrs?.unit ?? null, series, points }
+    node.always = true
+    used.add(node)
+  }
+  for (const [node, attrs] of kinds) {
+    if (attrs.kind && !used.has(node)) out.push({ line: 0, level: 'warning', message: `${node.id}: [chart=${attrs.kind}] has no "data ${node.id.split('.').pop()} …" line` })
+  }
+  return out
 }
 
 function findUnknownDocs(doc: MapDocument): ParseError[] {

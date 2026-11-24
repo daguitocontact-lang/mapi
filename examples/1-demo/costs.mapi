@@ -1,0 +1,23 @@
+kind architecture
+title Cloud costs
+summary What the platform costs each month, where the money goes and how it grows.
+
+api: Payments API [icon=aws-ecs, col=1, top]
+db: Database [store, icon=aws-rds, col=2, top]
+
+by-service: Monthly cost by service [chart=bar, unit=$, col=1]
+data by-service Compute 120, Database 80, Cache 45, Search 100
+
+share: Where the money goes [chart=pie, unit=$, col=2]
+data share Compute 120, Database 80, Cache 45, Search 100
+
+growth: Cost per month [chart=line, unit=$, col=1, bottom]
+series growth 2025, 2026
+data growth Jan 280 320, Feb 290 330, Mar 300 345, Apr 310 345
+
+latency: p95 latency [chart=hbar, unit=ms, col=2, bottom]
+data latency Charge 420, Save order 85, Webhook 140
+
+api -> by-service: costs
+db -> share: costs
+about by-service Monthly bill per AWS service.

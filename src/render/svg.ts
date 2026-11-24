@@ -8,6 +8,7 @@ import { labelOffsetY, roundedRectPath, shapePath } from './shapes'
 import { getIcon } from '../icons'
 import { textWidth } from '../measure'
 import { NOTE_TITLE } from '../docs'
+import { drawChart } from '../chart'
 
 const ARROW_LEN = 10
 
@@ -133,8 +134,29 @@ function docIcon(x: number, y: number, palette: Palette): string {
   return `<g pointer-events="none">${line(0, 12) + line(4, 12) + line(8, 7)}</g>`
 }
 
+/** A chart card: same card as a box, its title top-left, the numbers drawn inside. */
+function drawChartBox(node: PlacedNode, palette: Palette, showIds: boolean, doc: string | null): string {
+  const card = strokePath(roundedRectPath(node, palette.radius), { stroke: node.color ? OUTLINE[node.color]! : palette.nodeStroke, strokeWidth: 1.2, fill: palette.fill }, node.style === 'dashed')
+  const chart = drawChart(node.chart!, node.label, node, {
+    text: palette.text,
+    muted: palette.muted,
+    grid: palette.grid,
+    surface: palette.fill,
+    series: palette.branches,
+    font: palette.font,
+  })
+  const idTag = showIds ? drawIdTag(node, palette) : ''
+  const icon = node.link ? linkIcon(node.x + node.w - 16, node.y + 8, palette) : ''
+  const badge = drawBadge(node, node.x + node.w - BADGE - 8, node.y + 8)
+  const docMark = doc ? docIcon(node.x + node.w - 22, node.y + 16, palette) : ''
+  const link = node.link ? ` data-link="${escapeXml(node.link)}"` : ''
+  const docAttr = doc ? ` data-doc="${escapeXml(doc)}"` : ''
+  return `<g data-id="${escapeXml(node.id)}" data-chart="${node.chart!.kind}"${docAttr}${link} cursor="pointer"><g filter="url(#soft)">${card}</g>${chart + icon + idTag + badge + docMark}</g>`
+}
+
 function drawNode(node: PlacedNode, palette: Palette, showIds: boolean, branch: string | null, doc: string | null = null): string {
   if (node.style === 'note' && !node.isGroup) return drawNote(node, palette, doc)
+  if (node.chart && !node.isGroup) return drawChartBox(node, palette, showIds, doc)
   const opts: Stroke = {
     // Reference chips (copies of a shared box) read lighter than the boxes that use them.
     stroke: node.color ? OUTLINE[node.color]! : node.style === 'dashed' || node.attachedTo ? palette.muted : branch ?? palette.nodeStroke,

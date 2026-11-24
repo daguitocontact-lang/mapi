@@ -46,3 +46,43 @@ describe('descriptions', () => {
     expect(doc.about.api).toBe('Receives the requests.')
   })
 })
+
+describe('charts', () => {
+  const chartOf = (src: string) => parseMapi(`kind architecture\n${src}\n`)
+
+  test('a box with [chart=…] draws its data line', () => {
+    const { doc, errors } = chartOf('cost: AWS [chart=hbar, unit=USD]\ndata cost Fargate 120, RDS: 80, Valkey 1.5k')
+    expect(errors.filter((e) => e.level !== 'warning')).toEqual([])
+    expect(doc.nodes[0]!.chart).toEqual({
+      kind: 'hbar',
+      unit: 'USD',
+      series: [],
+      points: [
+        { label: 'Fargate', values: [120] },
+        { label: 'RDS', values: [80] },
+        { label: 'Valkey', values: [1500] },
+      ],
+    })
+  })
+
+  test('data alone draws bars; series names several values per item', () => {
+    const { doc } = chartOf('g: Growth\nseries g 2025, 2026\ndata g Jan 1 2, Feb 3 4')
+    const chart = doc.nodes[0]!.chart!
+    expect(chart.kind).toBe('bar')
+    expect(chart.series).toEqual(['2025', '2026'])
+    expect(chart.points[1]).toEqual({ label: 'Feb', values: [3, 4] })
+    expect(doc.nodes[0]!.always).toBe(true)
+  })
+
+  test('bad numbers, unknown boxes and missing data are reported', () => {
+    expect(chartOf('a: A\ndata a Fargate').errors.map((e) => e.message)).toContain('data a: "Fargate" needs a name and a number ("Fargate 120")')
+    expect(chartOf('a: A\ndata b X 1').errors.map((e) => e.message)).toContain('data references unknown box "b"')
+    expect(chartOf('a: A [chart=pie]').errors.some((e) => e.level === 'warning' && e.message.includes('has no "data a'))).toBe(true)
+  })
+
+  test('"data -> x" is still a line from a box called data', () => {
+    const { doc } = chartOf('data: Data\nx: X\ndata -> x: sends')
+    expect(doc.edges).toHaveLength(1)
+    expect(doc.charts).toEqual({})
+  })
+})

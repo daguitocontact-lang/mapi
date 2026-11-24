@@ -1,3 +1,4 @@
+import type { ChartSpec } from '../chart'
 import type { EdgeKind, NodeShape, NodeStyle } from '../model'
 
 export const FONT_SIZE = 14
@@ -38,6 +39,8 @@ export type PlacedNode = Box & {
   attachedTo: string | null
   color: string | null
   badge: string | null
+  /** Draws a chart instead of a label. */
+  chart?: ChartSpec
 }
 
 export type PlacedEdge = {

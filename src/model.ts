@@ -1,3 +1,5 @@
+import type { ChartSpec } from './chart'
+
 export const NODE_STYLES = ['solid', 'dashed', 'text', 'note'] as const
 export type NodeStyle = (typeof NODE_STYLES)[number]
 
@@ -46,6 +48,8 @@ export type MapNode = {
   color: string | null
   /** `[badge=4]`: a numbered marker in the box's corner (reference-diagram style). */
   badge: string | null
+  /** `[chart=bar]` + a `data` line: the box draws a chart instead of a label. */
+  chart?: ChartSpec
   /** Has a `doc`: the box makes room for the document mark. Set by the render pipeline. */
   doc?: boolean
   children: MapNode[]
@@ -80,6 +84,8 @@ export type MapDocument = {
   about: Record<string, string>
   /** Longer text kept in its own file, per node id (`doc <id> <file>[#section]`). */
   docs: Record<string, DocRef>
+  /** Chart numbers per box id (`data <id> …`, `series <id> …`); joined to the boxes after parsing. */
+  charts: Record<string, { data?: string; series?: string; line: number }>
   layers: string[]
   nodes: MapNode[]
   edges: MapEdge[]

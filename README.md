@@ -162,6 +162,27 @@ examples/         generic sample maps
 
 Groups: `id: Title [attrs] { … }`. A line can start from a box inside a group (`app.c -> mf`).
 
+### Charts — a box that draws numbers
+
+```mapi
+cost: Monthly cost [chart=bar, unit=$]
+data cost Compute 120, Database 80, Cache 45
+
+growth: Cost per month [chart=line, unit=$]
+series growth 2025, 2026
+data growth Jan 280 320, Feb 290 330, Mar 300 345
+```
+
+| Line | Meaning |
+|---|---|
+| `[chart=bar]` `hbar` `line` `pie` | The box draws a chart of its `data`: vertical bars, horizontal bars (rankings, long names), a line (over time), a donut (parts of a whole). The label is the chart's title. |
+| `[unit=$]` | `$` `€` `£` go before the number; anything else after it (`%`, `ms`, `USD`). |
+| `data <id> Name 120, Other 80` | The numbers: `name number` items separated by commas (`1.5k`, `2M` work). `data` alone, without `[chart=…]`, draws bars. |
+| `series <id> 2025, 2026` | Several numbers per item (`Jan 280 320`): grouped bars or one line per series, with a legend. A pie uses only the first number. |
+
+A chart is a box like any other: it takes `col=`, `row=`, `at=`, lines in and out, `about` and
+`doc`, and is always shown in the essentials view.
+
 ### Lines — `[step] from -> to: action`
 
 | Form | Meaning |

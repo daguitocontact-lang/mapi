@@ -1,6 +1,7 @@
 import type { ElkNode, ElkExtendedEdge, ElkLabel } from 'elkjs/lib/elk-api.js'
 import type { MapDocument, MapEdge, MapNode, NodeShape } from '../model'
 import { textWidth } from '../measure'
+import { chartSize } from '../chart'
 import type { LayerBand, PlacedEdge, PlacedNode } from './types'
 import { CHIP_FONT, CHIP_LOGO, CHIP_LOGO_GAP, CHIP_PAD_X, CHIP_PAD_Y, EDGE_LABEL_SIZE, FONT_SIZE, GROUP_LABEL_SIZE, STEP_BADGE } from './types'
 
@@ -107,6 +108,10 @@ function toElk(node: MapNode, input: BuildInput): ElkNode {
       height: t.height + CHIP_PAD_Y * 2 + room,
       layoutOptions,
     }
+  }
+  if (node.children.length === 0 && node.chart) {
+    const size = chartSize(node.chart, node.label)
+    return { id: node.id, ...seed, width: size.width + (node.doc || node.link ? LINK_ICON_SPACE : 0), height: size.height, layoutOptions }
   }
   if (node.children.length === 0 && node.shape === 'icon') {
     const t = textBox(node.label, FONT_SIZE)
@@ -312,6 +317,7 @@ export function readNodes(elk: ElkNode, ctx: ReadContext, dx = 0, dy = 0): Place
       attachedTo: original.attachedTo,
       color: original.color,
       badge: original.badge,
+      ...(original.chart ? { chart: original.chart } : {}),
       x,
       y,
       w: child.width ?? 0,
